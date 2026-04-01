@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the platform (fan or contestant).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique user ID." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "description": "The user's email address." },
+        "photoURL": { "type": "string", "description": "The user's profile photo URL." },
+        "points": { "type": "number", "description": "The user's current points balance." },
+        "role": { "type": "string", "enum": ["fan", "contestant", "admin"], "description": "The user's role." }
+      },
+      "required": ["uid", "displayName", "email", "points", "role"]
+    },
+    "Contestant": {
+      "title": "Contestant",
+      "description": "A participant in a competition.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The contestant's unique ID." },
+        "name": { "type": "string", "description": "The contestant's name." },
+        "category": { "type": "string", "enum": ["musician", "artist", "model"], "description": "The competition category." },
+        "bio": { "type": "string", "description": "A short bio of the contestant." },
+        "image": { "type": "string", "description": "The contestant's profile image URL." },
+        "votes": { "type": "number", "description": "The total number of votes received." },
+        "uid": { "type": "string", "description": "The user ID of the contestant." }
+      },
+      "required": ["id", "name", "category", "image", "votes"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "A vote cast by a fan for a contestant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The vote's unique ID." },
+        "fanUid": { "type": "string", "description": "The user ID of the fan who voted." },
+        "contestantId": { "type": "string", "description": "The ID of the contestant voted for." },
+        "pointsSpent": { "type": "number", "description": "The number of points spent on this vote." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the vote was cast." }
+      },
+      "required": ["id", "fanUid", "contestantId", "pointsSpent", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and points."
+    },
+    "/contestants/{contestantId}": {
+      "schema": "Contestant",
+      "description": "Contestants participating in competitions."
+    },
+    "/votes/{voteId}": {
+      "schema": "Vote",
+      "description": "History of votes cast."
+    }
+  }
+}

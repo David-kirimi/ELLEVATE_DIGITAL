@@ -19,11 +19,9 @@ import {
 } from 'lucide-react';
 
 export const NAV_LINKS = [
-  { name: 'Home', href: '#home' },
-  { name: 'About', href: '#about' },
-  { name: 'Services', href: '#services' },
-  { name: 'Portfolio', href: '#portfolio' },
-  { name: 'Contact', href: '#contact' },
+  { name: 'Home', href: '/' },
+  { name: 'Contestants', href: '/contestants' },
+  { name: 'Buy Points', href: '/points' },
 ];
 
 export const SERVICES = [
@@ -31,43 +29,19 @@ export const SERVICES = [
     id: 'social-media',
     title: 'Social Media Management',
     description: 'Full account management across Facebook, Instagram, and TikTok with strategic content creation.',
-    icon: Users,
     features: ['Content Strategy', 'Audience Engagement', 'Growth Analytics']
   },
   {
     id: 'influencer',
     title: 'Influencer Marketing',
     description: 'Leverage MC JJ\'s massive audience and strategic brand collaborations for real impact.',
-    icon: Target,
     features: ['Campaign Strategy', 'Brand Collaborations', 'Performance Reporting']
   },
   {
-    id: 'branding',
-    title: 'Branding',
-    description: 'Crafting unique brand identities that resonate with your target audience.',
-    icon: Palette,
-    features: ['Logo Design', 'Brand Strategy', 'Visual Identity']
-  },
-  {
-    id: 'web-design',
-    title: 'Web Design',
-    description: 'Modern, mobile-friendly websites and e-commerce solutions built for conversion.',
-    icon: Globe,
-    features: ['UI/UX Design', 'E-commerce', 'Landing Pages']
-  },
-  {
-    id: 'videography',
-    title: 'Videography & Photography',
-    description: 'High-quality visual content that tells your brand story effectively.',
-    icon: Camera,
-    features: ['Product Shoots', 'Promotional Videos', 'Event Coverage']
-  },
-  {
-    id: 'graphic-design',
-    title: 'Graphic Design',
-    description: 'Eye-catching creatives for all your digital and print marketing needs.',
-    icon: Layout,
-    features: ['Social Media Ads', 'Posters & Flyers', 'Marketing Materials']
+    id: 'competition',
+    title: 'Competition Platform',
+    description: 'A unique platform for musicians, artists, and models to gain visibility and win through fan votes.',
+    features: ['Real-time Voting', 'Points System', 'Talent Discovery']
   }
 ];
 
