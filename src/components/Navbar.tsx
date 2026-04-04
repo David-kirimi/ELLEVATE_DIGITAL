@@ -106,14 +106,18 @@ export default function Navbar() {
                 {userPoints} pts
               </div>
               <div className="flex items-center space-x-2">
-                <Link to="/account">
-                  <img 
-                    src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
-                    alt={user.displayName || 'User'} 
-                    className="w-8 h-8 rounded-full border border-gray-200 hover:border-brand-orange transition-all" 
-                    referrerPolicy="no-referrer"
-                  />
-                </Link>
+                  <Link to="/account">
+                    <img 
+                      src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
+                      alt={user.displayName || 'User'} 
+                      className="w-8 h-8 rounded-full border border-gray-200 hover:border-brand-orange transition-all" 
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`;
+                      }}
+                    />
+                  </Link>
                 <button onClick={logout} className="text-gray-600 hover:text-red-600 transition-colors">
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -168,6 +172,10 @@ export default function Navbar() {
                       alt={user.displayName || 'User'} 
                       className="w-10 h-10 rounded-full" 
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`;
+                      }}
                     />
                     <div>
                       <p className="font-bold">{user.displayName}</p>

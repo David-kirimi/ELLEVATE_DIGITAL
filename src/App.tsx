@@ -31,6 +31,7 @@ import ContestantDashboard from './pages/ContestantDashboard';
 export default function App() {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [siteContent, setSiteContent] = useState<any>(null);
 
   // Scroll to top on route change
@@ -39,24 +40,44 @@ export default function App() {
   }, [location.pathname]);
 
   useEffect(() => {
+    let unsubUser: (() => void) | null = null;
+    
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      // Clean up previous user listener if it exists
+      if (unsubUser) {
+        unsubUser();
+        unsubUser = null;
+      }
+
+      console.log("Auth state changed. User:", user?.email);
+
       if (user) {
         const userDocRef = doc(db, 'users', user.uid);
-        const unsubUser = onSnapshot(userDocRef, (doc) => {
+        unsubUser = onSnapshot(userDocRef, (doc) => {
           if (doc.exists()) {
             const data = doc.data();
-            setIsAdmin(data.role === 'admin' || user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com');
+            const adminStatus = data.role === 'admin' || user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com';
+            console.log("User data loaded. Admin status:", adminStatus, "Role:", data.role);
+            setIsAdmin(adminStatus);
+          } else {
+            // Fallback for admin emails if doc doesn't exist yet
+            const adminStatus = user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com';
+            console.log("User doc does not exist. Admin status (fallback):", adminStatus);
+            setIsAdmin(adminStatus);
           }
+          setLoading(false);
         }, (error) => {
           console.error("App.tsx onSnapshot error:", error);
-          // If it's a permission error, we might want to handle it gracefully
           if (error.message.includes('insufficient permissions')) {
-            setIsAdmin(user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com');
+            const adminStatus = user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com';
+            setIsAdmin(adminStatus);
           }
+          setLoading(false);
         });
-        return () => unsubUser();
       } else {
+        console.log("No user logged in.");
         setIsAdmin(false);
+        setLoading(false);
       }
     });
 
@@ -70,9 +91,21 @@ export default function App() {
 
     return () => {
       unsubscribe();
+      if (unsubUser) unsubUser();
       unsubContent();
     };
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500 font-bold animate-pulse">Initializing Eliax...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

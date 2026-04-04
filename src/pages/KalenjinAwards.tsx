@@ -30,6 +30,7 @@ export default function KalenjinAwards() {
     const q = query(
       collection(db, 'contestants'), 
       where('competitionId', '==', 'kalenjin-crown-2026'),
+      where('isVerified', '==', true),
       orderBy('votes', 'desc')
     );
     
@@ -98,7 +99,7 @@ export default function KalenjinAwards() {
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalVotes = contestants.reduce((acc, curr) => acc + (curr.votes || 0), 0);
+  const totalVotes = contestants.reduce((acc, curr) => acc + Math.max(0, curr.votes || 0), 0);
 
   if (loading) {
     return (
@@ -201,7 +202,7 @@ export default function KalenjinAwards() {
                     <div className="flex justify-between items-end mb-8">
                       <div>
                         <p className="text-gray-500 text-xs font-bold uppercase mb-1">Current Votes</p>
-                        <p className="text-3xl font-bold text-brand-orange">{c.votes || 0}</p>
+                        <p className="text-3xl font-bold text-brand-orange">{Math.max(0, c.votes || 0)}</p>
                       </div>
                       <button className="p-3 bg-white/5 rounded-2xl hover:bg-brand-orange/20 transition-colors">
                         <Share2 className="w-5 h-5 text-gray-400" />
@@ -226,46 +227,67 @@ export default function KalenjinAwards() {
           </>
         ) : (
           /* Leaderboard View */
-          <div className="max-w-3xl mx-auto space-y-4">
-            {contestants.map((c, index) => (
-              <motion.div
-                key={c.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white/5 rounded-3xl p-6 flex items-center space-x-6 border border-white/10 hover:bg-white/10 transition-all relative overflow-hidden group"
-              >
-                {/* Rank Badge */}
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl ${
-                  index === 0 ? 'bg-brand-orange text-white' : 
-                  index === 1 ? 'bg-gray-400 text-white' : 
-                  index === 2 ? 'bg-amber-700 text-white' : 
-                  'bg-white/5 text-gray-500'
-                }`}>
-                  {index === 0 ? <Trophy className="w-6 h-6" /> : index + 1}
-                </div>
+          <div className="max-w-4xl mx-auto space-y-3">
+            {contestants.map((c, index) => {
+              const percentage = totalVotes > 0 ? Math.max(0, (c.votes || 0) / totalVotes) * 100 : 0;
+              
+              return (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-white/5 rounded-2xl p-4 flex items-center gap-4 border border-white/10 hover:bg-white/10 transition-all group"
+                >
+                  {/* Rank Position */}
+                  <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm ${
+                    index === 0 ? 'bg-brand-orange text-white' : 
+                    index === 1 ? 'bg-gray-400 text-white' : 
+                    index === 2 ? 'bg-amber-700 text-white' : 
+                    'bg-white/5 text-gray-500'
+                  }`}>
+                    {index === 0 ? <Trophy className="w-5 h-5" /> : index + 1}
+                  </div>
 
-                <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 border-2 border-white/10">
-                  <img src={c.image} alt={c.name} className="w-full h-full object-cover" />
-                </div>
+                  {/* Profile Picture (Small Round Icon) */}
+                  <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-orange/20">
+                    <img 
+                      src={c.image} 
+                      alt={c.name} 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`;
+                      }}
+                    />
+                  </div>
 
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold group-hover:text-brand-orange transition-colors">{c.name}</h3>
-                  <p className="text-gray-500 text-sm">{c.category}</p>
-                </div>
+                  {/* Name & Progress Bar */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-end mb-2">
+                      <h3 className="font-bold truncate group-hover:text-brand-orange transition-colors">{c.name}</h3>
+                      <span className="text-xs font-bold text-brand-orange">{Math.max(0, c.votes || 0)} votes</span>
+                    </div>
+                    
+                    {/* Progress Bar Track */}
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentage}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className="h-full bg-gradient-to-r from-brand-orange to-orange-400 rounded-full shadow-[0_0_10px_rgba(255,102,0,0.3)]"
+                      />
+                    </div>
+                  </div>
 
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-brand-orange">{c.votes || 0}</p>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Votes</p>
-                </div>
-
-                {/* Progress Bar Background */}
-                <div 
-                  className="absolute bottom-0 left-0 h-1 bg-brand-orange/20 transition-all duration-1000"
-                  style={{ width: `${(c.votes / totalVotes) * 100}%` }}
-                />
-              </motion.div>
-            ))}
+                  {/* Percentage Label */}
+                  <div className="w-12 text-right">
+                    <span className="text-[10px] font-mono text-gray-500">{percentage.toFixed(1)}%</span>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

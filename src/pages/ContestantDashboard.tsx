@@ -15,7 +15,10 @@ import {
   ExternalLink,
   LayoutDashboard,
   Award,
-  Upload
+  Upload,
+  AlertCircle,
+  Music2,
+  Music
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import ConfirmModal from '../components/ConfirmModal';
@@ -38,6 +41,7 @@ import { useNavigate } from 'react-router-dom';
 export default function ContestantDashboard() {
   const [contestant, setContestant] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddingPost, setIsAddingPost] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
@@ -64,7 +68,9 @@ export default function ContestantDashboard() {
       instagram: '',
       facebook: '',
       twitter: '',
-      youtube: ''
+      youtube: '',
+      tiktok: '',
+      spotify: ''
     }
   });
   const navigate = useNavigate();
@@ -81,7 +87,25 @@ export default function ContestantDashboard() {
             setProfileFormData({
               bio: data.bio || '',
               image: data.image || '',
-              socials: data.socials || { instagram: '', facebook: '', twitter: '', youtube: '' }
+              socials: {
+                instagram: data.socials?.instagram || '',
+                facebook: data.socials?.facebook || '',
+                twitter: data.socials?.twitter || '',
+                youtube: data.socials?.youtube || '',
+                tiktok: data.socials?.tiktok || '',
+                spotify: data.socials?.spotify || ''
+              }
+            });
+
+            // Calculate Rank
+            const allContestantsQuery = query(
+              collection(db, 'contestants'),
+              where('competitionId', '==', data.competitionId || 'general'),
+              orderBy('votes', 'desc')
+            );
+            getDocs(allContestantsQuery).then(allSnapshot => {
+              const index = allSnapshot.docs.findIndex(doc => doc.id === snapshot.docs[0].id);
+              setRank(index !== -1 ? index + 1 : null);
             });
 
             // Fetch posts
@@ -164,6 +188,18 @@ export default function ContestantDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 pt-32 pb-20 px-6">
       <div className="max-w-7xl mx-auto">
+        {!import.meta.env.VITE_IMGBB_API_KEY && (
+          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-[32px] flex items-start">
+            <AlertCircle className="w-6 h-6 text-red-500 mr-4 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-lg font-bold text-red-600 mb-1">ImgBB API Key Missing</h3>
+              <p className="text-sm text-red-500/80 leading-relaxed">
+                Image uploads will not work until the administrator adds the <strong>VITE_IMGBB_API_KEY</strong> environment variable.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-12">
           <div>
             <div className="flex items-center space-x-2 text-brand-orange mb-2">
@@ -172,9 +208,23 @@ export default function ContestantDashboard() {
             </div>
             <h1 className="text-4xl font-bold">Manage Your Profile</h1>
           </div>
-          <div className="flex items-center space-x-4 bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100">
-            <Award className="w-5 h-5 text-brand-orange" />
-            <span className="font-bold text-lg">{contestant?.votes || 0} <span className="text-gray-400 text-sm font-normal">Votes</span></span>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100">
+              <Award className="w-5 h-5 text-brand-orange" />
+              <span className="font-bold text-lg">{contestant?.votes || 0} <span className="text-gray-400 text-sm font-normal">Votes</span></span>
+            </div>
+            {rank && (
+              <div className="flex items-center space-x-4 bg-brand-orange text-white px-6 py-3 rounded-2xl shadow-lg shadow-brand-orange/20">
+                <Award className="w-5 h-5" />
+                <span className="font-bold text-lg">Rank #{rank}</span>
+              </div>
+            )}
+            {contestant?.isVerified && (
+              <div className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-xl border border-blue-100">
+                <Award className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase">Verified</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -262,6 +312,26 @@ export default function ContestantDashboard() {
                       placeholder="YouTube URL"
                       value={profileFormData.socials.youtube}
                       onChange={(e) => setProfileFormData({...profileFormData, socials: {...profileFormData.socials, youtube: e.target.value}})}
+                      className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Music2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input 
+                      type="url"
+                      placeholder="TikTok URL"
+                      value={profileFormData.socials.tiktok}
+                      onChange={(e) => setProfileFormData({...profileFormData, socials: {...profileFormData.socials, tiktok: e.target.value}})}
+                      className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Music className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input 
+                      type="url"
+                      placeholder="Spotify URL"
+                      value={profileFormData.socials.spotify}
+                      onChange={(e) => setProfileFormData({...profileFormData, socials: {...profileFormData.socials, spotify: e.target.value}})}
                       className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
                     />
                   </div>

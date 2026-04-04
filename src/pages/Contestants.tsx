@@ -12,7 +12,7 @@ export default function Contestants() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = collection(db, 'contestants');
+    const q = query(collection(db, 'contestants'), where('isVerified', '==', true));
     const unsubscribe = onSnapshot(q, 
       (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

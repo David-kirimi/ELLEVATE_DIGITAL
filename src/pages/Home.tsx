@@ -84,6 +84,10 @@ export default function Home() {
                   alt="Marketing & Competition" 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80";
+                  }}
                 />
               </div>
               {/* Floating Stats */}

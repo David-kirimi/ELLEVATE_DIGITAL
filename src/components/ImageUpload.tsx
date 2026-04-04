@@ -41,7 +41,7 @@ export default function ImageUpload({ onUploadComplete, initialImage, folder = '
     try {
       const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
       if (!apiKey) {
-        throw new Error('ImgBB API Key is missing. Please check your environment variables.');
+        throw new Error('ImgBB API Key is missing. Please ensure you have added VITE_IMGBB_API_KEY to your environment variables in the Settings menu.');
       }
 
       const formData = new FormData();

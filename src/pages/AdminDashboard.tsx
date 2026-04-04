@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle } from 'lucide-react';
 import { db, auth } from '../firebase';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
@@ -48,7 +48,8 @@ export default function AdminDashboard() {
     bio: '',
     image: '',
     votes: 0,
-    competitionId: 'general'
+    competitionId: 'general',
+    isVerified: false
   });
 
   const [contentFormData, setContentFormData] = useState({
@@ -157,6 +158,8 @@ export default function AdminDashboard() {
         image: `https://ui-avatars.com/api/?name=${app.fullName}&background=random`,
         votes: 0,
         competitionId: 'general',
+        isVerified: true,
+        uid: app.userUid,
         createdAt: new Date().toISOString()
       });
 
@@ -231,7 +234,8 @@ export default function AdminDashboard() {
         bio: '',
         image: '',
         votes: 0,
-        competitionId: 'general'
+        competitionId: 'general',
+        isVerified: false
       });
     } catch (err) {
       console.error("Error saving contestant:", err);
@@ -247,7 +251,8 @@ export default function AdminDashboard() {
       bio: contestant.bio,
       image: contestant.image,
       votes: contestant.votes || 0,
-      competitionId: contestant.competitionId || 'general'
+      competitionId: contestant.competitionId || 'general',
+      isVerified: contestant.isVerified || false
     });
     setIsAdding(true);
   };
@@ -269,11 +274,38 @@ export default function AdminDashboard() {
     });
   };
 
+  const fixNegativeVotes = async () => {
+    const loadingToast = toast.loading("Fixing negative votes...");
+    try {
+      const negativeContestants = contestants.filter(c => (c.votes || 0) < 0);
+      for (const c of negativeContestants) {
+        await updateDoc(doc(db, 'contestants', c.id), { votes: 0 });
+      }
+      toast.success(`Fixed ${negativeContestants.length} contestants with negative votes!`, { id: loadingToast });
+    } catch (err) {
+      console.error("Error fixing negative votes:", err);
+      toast.error("Failed to fix negative votes", { id: loadingToast });
+    }
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-32 pb-20 px-6">
       <div className="max-w-7xl mx-auto">
+        {!import.meta.env.VITE_IMGBB_API_KEY && (
+          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-[32px] flex items-start">
+            <AlertCircle className="w-6 h-6 text-red-500 mr-4 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-lg font-bold text-red-600 mb-1">ImgBB API Key Missing</h3>
+              <p className="text-sm text-red-500/80 leading-relaxed">
+                Image uploads will not work until you add the <strong>VITE_IMGBB_API_KEY</strong> environment variable in the <strong>Settings</strong> menu. 
+                Please use the key you provided: <code>6738b516f540a67d53653ce65d43e906</code>
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div>
             <div className="flex items-center space-x-2 text-brand-orange mb-2">
@@ -283,13 +315,21 @@ export default function AdminDashboard() {
             <h1 className="text-4xl font-bold">Platform Management</h1>
           </div>
           
-          <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex flex-wrap items-center gap-4">
             <button 
-              onClick={() => setActiveTab('contestants')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'contestants' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
+              onClick={fixNegativeVotes}
+              className="bg-red-50 text-red-600 px-6 py-3 rounded-2xl text-sm font-bold flex items-center hover:bg-red-100 transition-all border border-red-100"
             >
-              <Trophy className="w-4 h-4 mr-2" /> Contestants
+              <AlertCircle className="w-4 h-4 mr-2" /> Fix Negative Votes
             </button>
+
+            <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
+              <button 
+                onClick={() => setActiveTab('contestants')}
+                className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'contestants' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
+              >
+                <Trophy className="w-4 h-4 mr-2" /> Contestants
+              </button>
             <button 
               onClick={() => setActiveTab('users')}
               className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'users' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
@@ -321,8 +361,9 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
+      </div>
 
-        {activeTab === 'contestants' ? (
+      {activeTab === 'contestants' ? (
           <>
             {!isAdding && (
               <div className="flex justify-end mb-8">
@@ -384,12 +425,23 @@ export default function AdminDashboard() {
                         <option value="kalenjin-crown-2026">Kalenjin Crown Awards 2026</option>
                       </select>
                     </div>
+                    <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-2xl">
+                      <input 
+                        type="checkbox"
+                        id="isVerified"
+                        checked={formData.isVerified}
+                        onChange={(e) => setFormData({...formData, isVerified: e.target.checked})}
+                        className="w-5 h-5 rounded border-gray-300 text-brand-orange focus:ring-brand-orange"
+                      />
+                      <label htmlFor="isVerified" className="text-sm font-bold text-gray-700 cursor-pointer">Verified Contestant</label>
+                    </div>
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Initial Votes</label>
                       <input 
                         type="number" 
+                        min="0"
                         value={formData.votes}
-                        onChange={(e) => setFormData({...formData, votes: parseInt(e.target.value) || 0})}
+                        onChange={(e) => setFormData({...formData, votes: Math.max(0, parseInt(e.target.value) || 0)})}
                         className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
                       />
                     </div>
@@ -452,7 +504,14 @@ export default function AdminDashboard() {
                       <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-8 py-6">
                           <div className="flex items-center space-x-4">
-                            <img src={c.image} alt={c.name} className="w-12 h-12 rounded-full object-cover" />
+                            <div className="relative">
+                              <img src={c.image} alt={c.name} className="w-12 h-12 rounded-full object-cover" />
+                              {c.isVerified && (
+                                <div className="absolute -top-1 -right-1 bg-blue-500 text-white p-0.5 rounded-full border-2 border-white">
+                                  <Check className="w-2 h-2" />
+                                </div>
+                              )}
+                            </div>
                             <div>
                               <p className="font-bold">{c.name}</p>
                               <p className="text-xs text-gray-500 truncate max-w-[200px]">{c.bio}</p>
