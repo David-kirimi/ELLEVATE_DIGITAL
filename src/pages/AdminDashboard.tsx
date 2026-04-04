@@ -27,6 +27,7 @@ export default function AdminDashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
   const [siteContent, setSiteContent] = useState<any>(null);
+  const [isContentLoading, setIsContentLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music' | 'mpesa' | 'transactions' | 'votes'>('contestants');
   const [mpesaSettings, setMpesaSettings] = useState({
@@ -125,6 +126,10 @@ export default function AdminDashboard() {
         setSiteContent(data);
         setContentFormData(prev => ({ ...prev, ...data }));
       }
+      setIsContentLoading(false);
+    }, (error) => {
+      console.error("Error fetching site content:", error);
+      setIsContentLoading(false);
     });
 
     const unsubMpesa = onSnapshot(doc(db, 'siteSettings', 'mpesa'), (doc) => {
@@ -158,6 +163,10 @@ export default function AdminDashboard() {
 
   const handleContentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isContentLoading) {
+      toast.error("Please wait for content to load before saving.");
+      return;
+    }
     const loadingToast = toast.loading("Updating site content...");
     try {
       await setDoc(doc(db, 'siteSettings', 'content'), contentFormData);
@@ -452,83 +461,90 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-          <div>
-            <div className="flex items-center space-x-2 text-brand-orange mb-2">
-              <Shield className="w-5 h-5" />
-              <span className="text-sm font-bold uppercase tracking-wider">Admin Portal</span>
-            </div>
-            <h1 className="text-4xl font-bold">Platform Management</h1>
+        <div className="mb-12">
+          <div className="flex items-center space-x-2 text-brand-orange mb-4">
+            <Shield className="w-6 h-6" />
+            <span className="text-sm font-bold uppercase tracking-wider">Admin Portal</span>
           </div>
-          
+          <h1 className="text-6xl md:text-8xl font-bold text-brand-orange leading-[0.9] uppercase tracking-tighter">
+            Platform<br />Management
+          </h1>
+        </div>
+        
+        <div className="flex flex-col space-y-6 mb-12">
           <div className="flex flex-wrap items-center gap-4">
             <button 
               onClick={fixNegativeVotes}
-              className="bg-red-50 text-red-600 px-6 py-3 rounded-2xl text-sm font-bold flex items-center hover:bg-red-100 transition-all border border-red-100"
+              className="bg-red-50 text-red-600 px-6 py-3 rounded-2xl text-sm font-bold flex items-center hover:bg-red-100 transition-all border border-red-100 shadow-sm"
             >
               <AlertCircle className="w-4 h-4 mr-2" /> Fix Negative Votes
             </button>
+          </div>
 
-            <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
-              <button 
-                onClick={() => setActiveTab('contestants')}
-                className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'contestants' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-              >
-                <Trophy className="w-4 h-4 mr-2" /> Contestants
-              </button>
-            <button 
-              onClick={() => setActiveTab('users')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'users' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <Users className="w-4 h-4 mr-2" /> Users & Roles
-            </button>
-            <button 
-              onClick={() => setActiveTab('applications')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'applications' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <FileText className="w-4 h-4 mr-2" /> Applications
-              {applications.filter(a => a.status === 'pending').length > 0 && (
-                <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                  {applications.filter(a => a.status === 'pending').length}
-                </span>
-              )}
-            </button>
-            <button 
-              onClick={() => setActiveTab('questions')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'questions' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <HelpCircle className="w-4 h-4 mr-2" /> Questions
-            </button>
-            <button 
-              onClick={() => setActiveTab('content')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'content' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <Layout className="w-4 h-4 mr-2" /> Site Content
-            </button>
-            <button 
-              onClick={() => setActiveTab('music')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'music' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <Music className="w-4 h-4 mr-2" /> Music
-            </button>
-            <button 
-              onClick={() => setActiveTab('mpesa')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'mpesa' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <Shield className="w-4 h-4 mr-2" /> M-Pesa
-            </button>
-            <button 
-              onClick={() => setActiveTab('transactions')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'transactions' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <ShoppingCart className="w-4 h-4 mr-2" /> Transactions
-            </button>
-            <button 
-              onClick={() => setActiveTab('votes')}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'votes' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
-            >
-              <Heart className="w-4 h-4 mr-2" /> Votes
-            </button>
+          <div className="w-full">
+            <div className="flex bg-white p-2 rounded-3xl shadow-md border border-gray-100 overflow-x-auto no-scrollbar scroll-smooth">
+              <div className="flex space-x-2 min-w-max">
+                <button 
+                  onClick={() => setActiveTab('contestants')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'contestants' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <Trophy className="w-4 h-4 mr-2" /> Contestants
+                </button>
+                <button 
+                  onClick={() => setActiveTab('users')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'users' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <Users className="w-4 h-4 mr-2" /> Users & Roles
+                </button>
+                <button 
+                  onClick={() => setActiveTab('applications')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'applications' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <FileText className="w-4 h-4 mr-2" /> Applications
+                  {applications.filter(a => a.status === 'pending').length > 0 && (
+                    <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                      {applications.filter(a => a.status === 'pending').length}
+                    </span>
+                  )}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('questions')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'questions' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" /> Questions
+                </button>
+                <button 
+                  onClick={() => setActiveTab('content')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'content' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <Layout className="w-4 h-4 mr-2" /> Site Content
+                </button>
+                <button 
+                  onClick={() => setActiveTab('music')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'music' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <Music className="w-4 h-4 mr-2" /> Music
+                </button>
+                <button 
+                  onClick={() => setActiveTab('mpesa')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'mpesa' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <Shield className="w-4 h-4 mr-2" /> M-Pesa
+                </button>
+                <button 
+                  onClick={() => setActiveTab('transactions')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'transactions' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" /> Transactions
+                </button>
+                <button 
+                  onClick={() => setActiveTab('votes')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'votes' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <Heart className="w-4 h-4 mr-2" /> Votes
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1322,7 +1338,7 @@ export default function AdminDashboard() {
           </div>
         ) : activeTab === 'transactions' ? (
           <div className="space-y-8">
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Total Transactions</p>
                 <p className="text-3xl font-bold">{transactions.length}</p>
