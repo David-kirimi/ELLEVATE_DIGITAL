@@ -91,6 +91,13 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/apply" element={<ContestantApplication />} />
           <Route path="/contestant-dashboard" element={<ContestantDashboard />} />
+          {/* Fallback route */}
+          <Route 
+            path="*" 
+            element={
+              isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />
+            } 
+          />
         </Routes>
       </main>
 
