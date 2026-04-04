@@ -5,6 +5,7 @@ import { db, auth } from '../firebase';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
 import toast from 'react-hot-toast';
+import { getYouTubeEmbedUrl } from '../utils/youtube';
 import { 
   collection, 
   onSnapshot, 
@@ -25,7 +26,14 @@ export default function AdminDashboard() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [siteContent, setSiteContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music'>('contestants');
+  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music' | 'mpesa'>('contestants');
+  const [mpesaSettings, setMpesaSettings] = useState({
+    consumerKey: '',
+    consumerSecret: '',
+    shortcode: '',
+    passkey: '',
+    callbackUrl: ''
+  });
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingMusic, setIsAddingMusic] = useState(false);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
@@ -115,6 +123,12 @@ export default function AdminDashboard() {
         setSiteContent(data);
         setContentFormData(prev => ({ ...prev, ...data }));
       }
+    });
+
+    const unsubMpesa = onSnapshot(doc(db, 'siteSettings', 'mpesa'), (doc) => {
+      if (doc.exists()) {
+        setMpesaSettings(doc.data() as any);
+      }
       setLoading(false);
     });
 
@@ -124,6 +138,7 @@ export default function AdminDashboard() {
       unsubApps();
       unsubQuestions();
       unsubContent();
+      unsubMpesa();
     };
   }, []);
 
@@ -175,7 +190,7 @@ export default function AdminDashboard() {
       const newSong = {
         id: editingMusicId || Math.random().toString(36).substr(2, 9),
         title: musicFormData.title,
-        youtubeUrl: musicFormData.youtubeUrl,
+        youtubeUrl: getYouTubeEmbedUrl(musicFormData.youtubeUrl),
         votes: musicFormData.votes || 0
       };
 
@@ -302,14 +317,26 @@ export default function AdminDashboard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const loadingToast = toast.loading(editingId ? "Updating contestant..." : "Creating contestant...");
+    
+    // Process songs to ensure embed URLs
+    const processedSongs = formData.songs.map(song => ({
+      ...song,
+      youtubeUrl: song.youtubeUrl ? getYouTubeEmbedUrl(song.youtubeUrl) : ''
+    }));
+
+    const finalData = {
+      ...formData,
+      songs: processedSongs
+    };
+
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'contestants', editingId), formData);
+        await updateDoc(doc(db, 'contestants', editingId), finalData);
         setEditingId(null);
         toast.success("Contestant updated successfully!", { id: loadingToast });
       } else {
         await addDoc(collection(db, 'contestants'), {
-          ...formData,
+          ...finalData,
           createdAt: new Date().toISOString()
         });
         setIsAdding(false);
@@ -469,6 +496,12 @@ export default function AdminDashboard() {
               className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'music' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
             >
               <Music className="w-4 h-4 mr-2" /> Music
+            </button>
+            <button 
+              onClick={() => setActiveTab('mpesa')}
+              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'mpesa' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
+            >
+              <Shield className="w-4 h-4 mr-2" /> M-Pesa
             </button>
           </div>
         </div>
@@ -1162,6 +1195,105 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+        ) : activeTab === 'mpesa' ? (
+          <div className="space-y-8">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-gray-100"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold">M-Pesa Daraja Settings</h2>
+                  <p className="text-sm text-gray-400">Configure your Safaricom Daraja API credentials for STK Push payments.</p>
+                </div>
+                <div className="bg-orange-50 text-orange-600 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider">
+                  Sandbox Mode
+                </div>
+              </div>
+              
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const loadingToast = toast.loading("Saving M-Pesa settings...");
+                try {
+                  await setDoc(doc(db, 'siteSettings', 'mpesa'), mpesaSettings);
+                  toast.success("M-Pesa settings saved successfully!", { id: loadingToast });
+                } catch (err) {
+                  console.error("Error saving M-Pesa settings:", err);
+                  toast.error("Failed to save M-Pesa settings.", { id: loadingToast });
+                }
+              }} className="space-y-8">
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Consumer Key</label>
+                      <input 
+                        type="password"
+                        required
+                        value={mpesaSettings.consumerKey}
+                        onChange={(e) => setMpesaSettings({...mpesaSettings, consumerKey: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="Your Daraja Consumer Key"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Consumer Secret</label>
+                      <input 
+                        type="password"
+                        required
+                        value={mpesaSettings.consumerSecret}
+                        onChange={(e) => setMpesaSettings({...mpesaSettings, consumerSecret: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="Your Daraja Consumer Secret"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Business Shortcode</label>
+                      <input 
+                        type="text"
+                        required
+                        value={mpesaSettings.shortcode}
+                        onChange={(e) => setMpesaSettings({...mpesaSettings, shortcode: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="e.g. 174379"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Passkey</label>
+                      <input 
+                        type="password"
+                        required
+                        value={mpesaSettings.passkey}
+                        onChange={(e) => setMpesaSettings({...mpesaSettings, passkey: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="Your Daraja Passkey"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 flex items-start">
+                  <Info className="w-5 h-5 text-blue-500 mr-4 mt-1 flex-shrink-0" />
+                  <div className="text-sm text-blue-600 leading-relaxed">
+                    <p className="font-bold mb-1">Important Note:</p>
+                    These keys are used for the STK Push integration. Ensure you are using the <strong>Sandbox</strong> credentials for testing. 
+                    The callback URL is automatically generated based on your application's deployment URL.
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button 
+                    type="submit"
+                    className="bg-brand-black text-white px-12 py-4 rounded-2xl font-bold hover:bg-brand-orange transition-all flex items-center"
+                  >
+                    <Save className="w-5 h-5 mr-2" /> Save M-Pesa Configuration
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         ) : activeTab === 'users' ? (
           <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
             <div className="overflow-x-auto">

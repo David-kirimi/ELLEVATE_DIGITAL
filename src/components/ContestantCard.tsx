@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, Coins, CheckCircle2, AlertCircle, Instagram, Facebook, Twitter, Youtube, ExternalLink, Music2, Music, X, Share2 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { doc, updateDoc, increment, addDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
+import { getYouTubeEmbedUrl } from '../utils/youtube';
 
 interface Contestant {
   id: string;
@@ -61,7 +62,8 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
       const pointsToSpend = 1; // 1 point per vote
 
       if (points < pointsToSpend) {
-        setError("Not enough points. Buy more to vote!");
+        setError("Not enough points. Redirecting to purchase page...");
+        setTimeout(() => navigate('/points'), 2000);
         return;
       }
 
@@ -306,7 +308,7 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
                             {song.youtubeUrl && (
                               <div className="relative aspect-video rounded-2xl overflow-hidden bg-black shadow-inner">
                                 <iframe
-                                  src={song.youtubeUrl}
+                                  src={getYouTubeEmbedUrl(song.youtubeUrl)}
                                   title={song.title}
                                   className="absolute inset-0 w-full h-full"
                                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

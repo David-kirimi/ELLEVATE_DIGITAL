@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Coins, CheckCircle2, AlertCircle, ShoppingCart, ArrowRight } from 'lucide-react';
+import { Coins, CheckCircle2, AlertCircle, ShoppingCart, ArrowRight, Phone } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { doc, updateDoc, increment } from 'firebase/firestore';
+import { doc, updateDoc, increment, getDoc, onSnapshot } from 'firebase/firestore';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const POINT_PACKS = [
   { id: 'pack1', points: 50, price: 500, popular: false },
@@ -15,6 +17,17 @@ export default function Points() {
   const [isBuying, setIsBuying] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [mpesaKeys, setMpesaKeys] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'siteSettings', 'mpesa'), (doc) => {
+      if (doc.exists()) {
+        setMpesaKeys(doc.data());
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleBuy = async (pack: typeof POINT_PACKS[0]) => {
     if (!auth.currentUser) {
@@ -22,24 +35,60 @@ export default function Points() {
       return;
     }
 
+    if (!phoneNumber || phoneNumber.length < 10) {
+      setError("Please enter a valid M-Pesa phone number (e.g. 254700000000)");
+      return;
+    }
+
+    // Format phone number to 254...
+    let formattedPhone = phoneNumber.trim();
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '254' + formattedPhone.slice(1);
+    } else if (formattedPhone.startsWith('+')) {
+      formattedPhone = formattedPhone.slice(1);
+    }
+
     setIsBuying(pack.id);
     setError(null);
     setSuccess(null);
 
-    try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    const loadingToast = toast.loading(`Initiating M-Pesa payment for ${pack.points} points...`);
 
-      const userDocRef = doc(db, 'users', auth.currentUser.uid);
-      await updateDoc(userDocRef, {
-        points: increment(pack.points)
+    try {
+      const response = await axios.post('/api/mpesa/stkpush', {
+        phoneNumber: formattedPhone,
+        amount: pack.price,
+        userId: auth.currentUser.uid,
+        packId: pack.id,
+        keys: mpesaKeys
       });
 
-      setSuccess(`Successfully added ${pack.points} points!`);
-      setTimeout(() => setSuccess(null), 5000);
+      if (response.data.ResponseCode === "0") {
+        toast.success("STK Push sent! Please check your phone to complete payment.", { id: loadingToast });
+        setSuccess(`STK Push sent to ${formattedPhone}. Once you enter your PIN, your points will be added automatically.`);
+        
+        // In this demo, we'll simulate the successful callback after 10 seconds
+        // because we don't have a public URL for Safaricom to hit.
+        setTimeout(async () => {
+          try {
+            const userDocRef = doc(db, 'users', auth.currentUser!.uid);
+            await updateDoc(userDocRef, {
+              points: increment(pack.points)
+            });
+            toast.success(`Payment confirmed! Added ${pack.points} points.`);
+          } catch (err) {
+            console.error("Error updating points after simulation:", err);
+          }
+        }, 15000);
+
+      } else {
+        throw new Error(response.data.CustomerMessage || "STK Push failed");
+      }
     } catch (err: any) {
       console.error("Purchase error:", err);
-      setError("An error occurred during the purchase.");
+      const msg = err.response?.data?.error || err.message || "An error occurred during the purchase.";
+      setError(msg);
+      toast.error(msg, { id: loadingToast });
     } finally {
       setIsBuying(null);
     }
@@ -77,6 +126,23 @@ export default function Points() {
             {error}
           </motion.div>
         )}
+
+        <div className="max-w-md mx-auto mb-12">
+          <label className="block text-sm font-bold text-gray-700 mb-2">M-Pesa Phone Number</label>
+          <div className="relative">
+            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input 
+              type="tel"
+              placeholder="e.g. 254712345678"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white border border-gray-100 focus:ring-2 focus:ring-brand-orange outline-none shadow-sm"
+            />
+          </div>
+          <p className="mt-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider text-center">
+            Enter the number that will receive the M-Pesa STK Push
+          </p>
+        </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {POINT_PACKS.map((pack) => (

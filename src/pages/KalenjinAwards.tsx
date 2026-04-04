@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trophy, Heart, Search, Share2, Crown, Music, Star, ChevronRight } from 'lucide-react';
+import { Trophy, Heart, Search, Share2, Crown, Music, Star, ChevronRight, Play, Pause, Music2 } from 'lucide-react';
+import { getYouTubeEmbedUrl } from '../utils/youtube';
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -45,13 +46,13 @@ export default function KalenjinAwards() {
     return () => unsubscribe();
   }, []);
 
-  const handleVote = async (contestant: any) => {
+  const handleVote = async (contestant: any, songId?: string) => {
     if (!auth.currentUser) {
       navigate('/signup');
       return;
     }
 
-    setVotingId(contestant.id);
+    setVotingId(songId || contestant.id);
     setError(null);
 
     try {
@@ -75,18 +76,27 @@ export default function KalenjinAwards() {
       await updateDoc(userDocRef, { points: increment(-pointsToSpend) });
 
       // 2. Add vote to contestant
-      await updateDoc(doc(db, 'contestants', contestant.id), { votes: increment(1) });
+      const contestantDocRef = doc(db, 'contestants', contestant.id);
+      await updateDoc(contestantDocRef, { votes: increment(1) });
 
-      // 3. Record vote
+      // 3. If it's a song vote, update the song votes too
+      if (songId && contestant.songs) {
+        const updatedSongs = contestant.songs.map((s: any) => 
+          s.id === songId ? { ...s, votes: (s.votes || 0) + 1 } : s
+        );
+        await updateDoc(contestantDocRef, { songs: updatedSongs });
+      }
+
+      // 4. Record vote
       await addDoc(collection(db, 'votes'), {
         fanUid: auth.currentUser.uid,
         contestantId: contestant.id,
+        songId: songId || null,
         competitionId: 'kalenjin-crown-2026',
         pointsSpent: pointsToSpend,
         timestamp: serverTimestamp()
       });
 
-      // Success feedback (could add a toast)
     } catch (err) {
       console.error("Voting error:", err);
       setError("An error occurred while voting.");
@@ -192,34 +202,66 @@ export default function KalenjinAwards() {
                       referrerPolicy="no-referrer"
                     />
                     
-                    <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-[#0a140a] via-[#0a140a]/60 to-transparent">
+                    <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-[#0a140a] via-[#0a140a]/80 to-transparent">
                       <h3 className="text-3xl font-display font-bold uppercase tracking-tighter mb-1 outline-text">{c.name}</h3>
                       <p className="text-brand-orange text-xs font-bold uppercase tracking-widest">{c.category}</p>
                     </div>
                   </div>
 
-                  <div className="p-8">
-                    <div className="flex justify-between items-end mb-8">
-                      <div>
-                        <p className="text-gray-500 text-xs font-bold uppercase mb-1">Current Votes</p>
-                        <p className="text-3xl font-bold text-brand-orange">{Math.max(0, c.votes || 0)}</p>
+                  <div className="p-8 space-y-6">
+                    {/* Songs List */}
+                    {c.songs && c.songs.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">Nominated Songs</p>
+                        {c.songs.map((song: any) => (
+                          <div key={song.id} className="bg-white/5 rounded-2xl p-4 border border-white/5 hover:border-brand-orange/20 transition-all">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-brand-orange/10 rounded-lg flex items-center justify-center">
+                                  <Music2 className="w-4 h-4 text-brand-orange" />
+                                </div>
+                                <p className="text-sm font-bold truncate max-w-[120px]">{song.title}</p>
+                              </div>
+                              <button 
+                                onClick={() => handleVote(c, song.id)}
+                                disabled={votingId === song.id}
+                                className="px-3 py-1.5 bg-brand-orange text-white text-[10px] font-bold rounded-lg hover:bg-orange-600 transition-all disabled:opacity-50"
+                              >
+                                {votingId === song.id ? '...' : 'VOTE'}
+                              </button>
+                            </div>
+                            {song.youtubeUrl && (
+                              <div className="aspect-video rounded-xl overflow-hidden bg-black">
+                                <iframe 
+                                  src={getYouTubeEmbedUrl(song.youtubeUrl)}
+                                  title={song.title}
+                                  className="w-full h-full"
+                                  allowFullScreen
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <button className="p-3 bg-white/5 rounded-2xl hover:bg-brand-orange/20 transition-colors">
-                        <Share2 className="w-5 h-5 text-gray-400" />
+                    )}
+
+                    <div className="flex justify-between items-end pt-4 border-t border-white/5">
+                      <div>
+                        <p className="text-gray-500 text-[10px] font-bold uppercase mb-1">Total Votes</p>
+                        <p className="text-3xl font-bold text-brand-orange tracking-tighter">{Math.max(0, c.votes || 0)}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleVote(c)}
+                        disabled={votingId === c.id}
+                        className="px-8 py-4 bg-white/5 text-white rounded-2xl font-bold text-xs hover:bg-brand-orange transition-all flex items-center justify-center disabled:opacity-50 border border-white/10"
+                      >
+                        {votingId === c.id ? (
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          "VOTE ARTIST"
+                        )}
                       </button>
                     </div>
-
-                    <button
-                      onClick={() => handleVote(c)}
-                      disabled={votingId === c.id}
-                      className="w-full py-5 bg-brand-orange text-white rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-brand-orange/30 transition-all flex items-center justify-center disabled:opacity-50"
-                    >
-                      {votingId === c.id ? (
-                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        "VOTE NOW"
-                      )}
-                    </button>
                   </div>
                 </motion.div>
               ))}
