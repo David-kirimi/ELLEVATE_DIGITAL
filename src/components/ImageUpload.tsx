@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Upload, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { storage } from '../firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 
 interface ImageUploadProps {
@@ -41,32 +39,35 @@ export default function ImageUpload({ onUploadComplete, initialImage, folder = '
     setError(null);
 
     try {
-      const storageRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
+      if (!apiKey) {
+        throw new Error('ImgBB API Key is missing. Please check your environment variables.');
+      }
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setProgress(p);
-        }, 
-        (err) => {
-          console.error('Upload error:', err);
-          const msg = 'Failed to upload image. Please check your CORS settings in Google Cloud.';
-          setError(msg);
-          toast.error(msg);
-          setUploading(false);
-        }, 
-        async () => {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          setPreview(url);
-          onUploadComplete(url);
-          setUploading(false);
-          toast.success('Image uploaded successfully!');
-        }
-      );
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // ImgBB doesn't support progress natively with fetch easily, so we'll simulate it or just show loading
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Failed to upload image to ImgBB');
+      }
+
+      const result = await response.json();
+      const url = result.data.url;
+
+      setPreview(url);
+      onUploadComplete(url);
+      setUploading(false);
+      toast.success('Image uploaded successfully!');
     } catch (err: any) {
       console.error('Upload error:', err);
-      const msg = 'Failed to upload image. Please try again.';
+      const msg = err.message || 'Failed to upload image. Please try again.';
       setError(msg);
       toast.error(msg);
       setUploading(false);

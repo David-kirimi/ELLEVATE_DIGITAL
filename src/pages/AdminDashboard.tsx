@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info } from 'lucide-react';
 import { db, auth } from '../firebase';
+import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
 import toast from 'react-hot-toast';
 import { 
@@ -28,6 +29,18 @@ export default function AdminDashboard() {
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    onConfirm: () => void;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    onConfirm: () => {},
+    title: '',
+    message: ''
+  });
   
   const [formData, setFormData] = useState({
     name: '',
@@ -180,27 +193,37 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteQuestion = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this question?")) {
-      try {
-        await deleteDoc(doc(db, 'applicationQuestions', id));
-      } catch (err) {
-        console.error("Error deleting question:", err);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Question',
+      message: 'Are you sure you want to delete this application question? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'applicationQuestions', id));
+          toast.success("Question deleted successfully");
+        } catch (err) {
+          console.error("Error deleting question:", err);
+          toast.error("Failed to delete question");
+        }
       }
-    }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const loadingToast = toast.loading(editingId ? "Updating contestant..." : "Creating contestant...");
     try {
       if (editingId) {
         await updateDoc(doc(db, 'contestants', editingId), formData);
         setEditingId(null);
+        toast.success("Contestant updated successfully!", { id: loadingToast });
       } else {
         await addDoc(collection(db, 'contestants'), {
           ...formData,
           createdAt: new Date().toISOString()
         });
         setIsAdding(false);
+        toast.success("Contestant created successfully!", { id: loadingToast });
       }
       setFormData({
         name: '',
@@ -212,7 +235,7 @@ export default function AdminDashboard() {
       });
     } catch (err) {
       console.error("Error saving contestant:", err);
-      alert("Error saving contestant. Check console for details.");
+      toast.error("Error saving contestant. Check console for details.", { id: loadingToast });
     }
   };
 
@@ -230,13 +253,20 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this contestant?")) {
-      try {
-        await deleteDoc(doc(db, 'contestants', id));
-      } catch (err) {
-        console.error("Error deleting contestant:", err);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Contestant',
+      message: 'Are you sure you want to delete this contestant? This will remove all their data from the platform.',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'contestants', id));
+          toast.success("Contestant deleted successfully");
+        } catch (err) {
+          console.error("Error deleting contestant:", err);
+          toast.error("Failed to delete contestant");
+        }
       }
-    }
+    });
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -705,7 +735,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex justify-end">
                   <button 
                     type="submit"
@@ -715,48 +744,9 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </form>
-
-              {/* Storage Setup Guide */}
-              <div className="mt-20 pt-20 border-t border-gray-100">
-                <div className="flex items-center mb-6">
-                  <Terminal className="w-6 h-6 text-brand-orange mr-3" />
-                  <h3 className="text-xl font-bold">Firebase Storage Setup (CORS)</h3>
-                </div>
-                <div className="bg-gray-900 rounded-3xl p-8 text-gray-300 font-mono text-sm space-y-6 overflow-x-auto">
-                  <p className="text-brand-orange font-bold mb-4"># Follow these steps to enable image uploads from any domain:</p>
-                  
-                  <div className="space-y-2">
-                    <p className="text-white">1. Create a file named <span className="text-brand-orange">cors.json</span>:</p>
-                    <pre className="bg-black/50 p-4 rounded-xl text-green-400">
-{`[
-  {
-    "origin": ["*"],
-    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
-    "maxAgeSeconds": 3600
-  }
-]`}
-                    </pre>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-white">2. Apply the configuration using gsutil:</p>
-                    <p className="text-xs text-gray-500 italic"># Replace YOUR_BUCKET_NAME with your Firebase Storage bucket ID</p>
-                    <pre className="bg-black/50 p-4 rounded-xl text-brand-orange">
-                      gsutil cors set cors.json gs://YOUR_BUCKET_NAME
-                    </pre>
-                  </div>
-
-                  <div className="flex items-start bg-brand-orange/10 p-4 rounded-xl border border-brand-orange/20 mt-6">
-                    <Info className="w-5 h-5 text-brand-orange mr-3 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-gray-300 leading-relaxed">
-                      This configuration allows your website to upload files directly to Firebase Storage. 
-                      You can run these commands in the <span className="text-white font-bold">Google Cloud Shell</span>.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </motion.div>
           </div>
+
         ) : activeTab === 'users' ? (
           <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
             <div className="overflow-x-auto">
@@ -895,6 +885,13 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+        <ConfirmModal 
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          message={confirmModal.message}
+        />
       </div>
     </div>
   );

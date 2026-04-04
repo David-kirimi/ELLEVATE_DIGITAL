@@ -18,6 +18,7 @@ import {
   Upload
 } from 'lucide-react';
 import { db, auth } from '../firebase';
+import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
 import toast from 'react-hot-toast';
 import { 
@@ -39,6 +40,17 @@ export default function ContestantDashboard() {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingPost, setIsAddingPost] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    onConfirm: () => void;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    onConfirm: () => {},
+    title: '',
+    message: ''
+  });
   const [postFormData, setPostFormData] = useState({
     title: '',
     description: '',
@@ -130,16 +142,21 @@ export default function ContestantDashboard() {
   };
 
   const handleDeletePost = async (id: string) => {
-    if (confirm("Are you sure you want to delete this post?")) {
-      const loadingToast = toast.loading("Deleting post...");
-      try {
-        await deleteDoc(doc(db, 'contestantPosts', id));
-        toast.success("Post deleted", { id: loadingToast });
-      } catch (err) {
-        console.error("Error deleting post:", err);
-        toast.error("Failed to delete post", { id: loadingToast });
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Post',
+      message: 'Are you sure you want to delete this post? This action cannot be undone.',
+      onConfirm: async () => {
+        const loadingToast = toast.loading("Deleting post...");
+        try {
+          await deleteDoc(doc(db, 'contestantPosts', id));
+          toast.success("Post deleted", { id: loadingToast });
+        } catch (err) {
+          console.error("Error deleting post:", err);
+          toast.error("Failed to delete post", { id: loadingToast });
+        }
       }
-    }
+    });
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -405,6 +422,13 @@ export default function ContestantDashboard() {
             </div>
           </div>
         </div>
+        <ConfirmModal 
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          message={confirmModal.message}
+        />
       </div>
     </div>
   );
