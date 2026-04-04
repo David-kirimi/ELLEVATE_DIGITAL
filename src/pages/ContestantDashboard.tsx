@@ -14,9 +14,12 @@ import {
   Trash2, 
   ExternalLink,
   LayoutDashboard,
-  Award
+  Award,
+  Upload
 } from 'lucide-react';
 import { db, auth } from '../firebase';
+import ImageUpload from '../components/ImageUpload';
+import toast from 'react-hot-toast';
 import { 
   doc, 
   onSnapshot, 
@@ -97,17 +100,20 @@ export default function ContestantDashboard() {
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!contestant) return;
+    const loadingToast = toast.loading("Updating profile...");
     try {
       await updateDoc(doc(db, 'contestants', contestant.id), profileFormData);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!", { id: loadingToast });
     } catch (err) {
       console.error("Error updating profile:", err);
+      toast.error("Failed to update profile", { id: loadingToast });
     }
   };
 
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth.currentUser) return;
+    const loadingToast = toast.loading("Publishing post...");
     try {
       await addDoc(collection(db, 'contestantPosts'), {
         ...postFormData,
@@ -116,17 +122,22 @@ export default function ContestantDashboard() {
       });
       setIsAddingPost(false);
       setPostFormData({ title: '', description: '', mediaUrl: '', mediaType: 'image' });
+      toast.success("Post published successfully!", { id: loadingToast });
     } catch (err) {
       console.error("Error adding post:", err);
+      toast.error("Failed to publish post", { id: loadingToast });
     }
   };
 
   const handleDeletePost = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
+    if (confirm("Are you sure you want to delete this post?")) {
+      const loadingToast = toast.loading("Deleting post...");
       try {
         await deleteDoc(doc(db, 'contestantPosts', id));
+        toast.success("Post deleted", { id: loadingToast });
       } catch (err) {
         console.error("Error deleting post:", err);
+        toast.error("Failed to delete post", { id: loadingToast });
       }
     }
   };
@@ -165,15 +176,23 @@ export default function ContestantDashboard() {
 
               <form onSubmit={handleProfileUpdate} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Profile Image URL</label>
-                  <div className="relative">
-                    <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input 
-                      type="url"
-                      value={profileFormData.image}
-                      onChange={(e) => setProfileFormData({...profileFormData, image: e.target.value})}
-                      className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
-                    />
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Profile Image</label>
+                  <ImageUpload 
+                    folder="contestants"
+                    initialImage={profileFormData.image}
+                    onUploadComplete={(url) => setProfileFormData({...profileFormData, image: url})}
+                  />
+                  <div className="mt-4">
+                    <label className="block text-xs font-bold text-gray-400 mb-2">Or use Image URL</label>
+                    <div className="relative">
+                      <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <input 
+                        type="url"
+                        value={profileFormData.image}
+                        onChange={(e) => setProfileFormData({...profileFormData, image: e.target.value})}
+                        className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -285,15 +304,38 @@ export default function ContestantDashboard() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Media URL</label>
-                    <input 
-                      type="url"
-                      required
-                      value={postFormData.mediaUrl}
-                      onChange={(e) => setPostFormData({...postFormData, mediaUrl: e.target.value})}
-                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
-                      placeholder="https://..."
-                    />
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Media</label>
+                    {postFormData.mediaType === 'image' ? (
+                      <ImageUpload 
+                        folder="posts"
+                        initialImage={postFormData.mediaUrl}
+                        onUploadComplete={(url) => setPostFormData({...postFormData, mediaUrl: url})}
+                      />
+                    ) : (
+                      <div className="relative">
+                        <Video className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input 
+                          type="url"
+                          required
+                          value={postFormData.mediaUrl}
+                          onChange={(e) => setPostFormData({...postFormData, mediaUrl: e.target.value})}
+                          className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                          placeholder="YouTube Video URL"
+                        />
+                      </div>
+                    )}
+                    {postFormData.mediaType === 'image' && (
+                      <div className="mt-4">
+                        <label className="block text-xs font-bold text-gray-400 mb-2">Or use Image URL</label>
+                        <input 
+                          type="url"
+                          value={postFormData.mediaUrl}
+                          onChange={(e) => setPostFormData({...postFormData, mediaUrl: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                          placeholder="https://..."
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Description</label>

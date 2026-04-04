@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Contestants from './pages/Contestants';
@@ -30,6 +31,7 @@ import ContestantDashboard from './pages/ContestantDashboard';
 export default function App() {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [siteContent, setSiteContent] = useState<any>(null);
 
   // Scroll to top on route change
   useEffect(() => {
@@ -57,11 +59,24 @@ export default function App() {
         setIsAdmin(false);
       }
     });
-    return () => unsubscribe();
+
+    const unsubContent = onSnapshot(doc(db, 'siteSettings', 'content'), (doc) => {
+      if (doc.exists()) {
+        setSiteContent(doc.data());
+      }
+    }, (error) => {
+      console.error("App.tsx siteSettings error:", error);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubContent();
+    };
   }, []);
 
   return (
     <div className="min-h-screen bg-white">
+      <Toaster position="top-center" reverseOrder={false} />
       <Navbar />
       
       <main>
@@ -96,10 +111,10 @@ export default function App() {
                 ELIAX<span className="text-brand-orange">DIGITAL</span>
               </a>
               <p className="text-gray-400 max-w-sm mb-4">
-                Kenya's leading digital marketing agency and competition platform. We bring customers to your brand and stars to the spotlight.
+                {siteContent?.footerText || "Kenya's leading digital marketing agency and competition platform. We bring customers to your brand and stars to the spotlight."}
               </p>
               <div className="flex items-center text-gray-400 mb-8">
-                <Phone className="w-4 h-4 mr-2" /> +254 794 415006
+                <Phone className="w-4 h-4 mr-2" /> {siteContent?.contactPhone || '+254 794 415006'}
               </div>
               <div className="flex space-x-4">
                 <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-orange transition-all"><Instagram size={20} /></a>
@@ -135,8 +150,8 @@ export default function App() {
             <div>
               <h4 className="font-bold mb-6">Contact</h4>
               <ul className="space-y-4 text-gray-400">
-                <li className="flex items-center"><Phone className="w-4 h-4 mr-2" /> +254 794 415006</li>
-                <li className="flex items-center"><Mail className="w-4 h-4 mr-2" /> marketing@eliaxdigitalmarketing.com</li>
+                <li className="flex items-center"><Phone className="w-4 h-4 mr-2" /> {siteContent?.contactPhone || '+254 794 415006'}</li>
+                <li className="flex items-center"><Mail className="w-4 h-4 mr-2" /> {siteContent?.contactEmail || 'marketing@eliaxdigitalmarketing.com'}</li>
                 <li className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> Nairobi, Kenya</li>
               </ul>
             </div>

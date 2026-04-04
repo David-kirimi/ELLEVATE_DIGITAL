@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info } from 'lucide-react';
 import { db, auth } from '../firebase';
+import ImageUpload from '../components/ImageUpload';
+import toast from 'react-hot-toast';
 import { 
   collection, 
   onSnapshot, 
@@ -10,7 +12,9 @@ import {
   deleteDoc, 
   doc, 
   query, 
-  orderBy 
+  orderBy,
+  setDoc,
+  getDoc
 } from 'firebase/firestore';
 
 export default function AdminDashboard() {
@@ -18,8 +22,9 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [siteContent, setSiteContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions'>('contestants');
+  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content'>('contestants');
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,6 +36,17 @@ export default function AdminDashboard() {
     image: '',
     votes: 0,
     competitionId: 'general'
+  });
+
+  const [contentFormData, setContentFormData] = useState({
+    heroTitle: 'VOTE FOR YOUR FAVORITE TALENT',
+    heroSubtitle: 'Empowering the next generation of Kalenjin stars through community-driven recognition and support.',
+    heroImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80',
+    aboutTitle: 'CELEBRATING EXCELLENCE',
+    aboutText: 'The Kalenjin Crown Awards is a premier platform dedicated to discovering, nurturing, and celebrating the diverse talents within the Kalenjin community. From music and arts to modeling and innovation, we provide a stage for excellence to shine.',
+    contactEmail: 'support@eliax.com',
+    contactPhone: '+254 700 000 000',
+    footerText: '© 2026 Eliax. All rights reserved. Built for the community.'
   });
 
   const [questionFormData, setQuestionFormData] = useState({
@@ -59,6 +75,14 @@ export default function AdminDashboard() {
     const qQuestions = query(collection(db, 'applicationQuestions'), orderBy('order', 'asc'));
     const unsubQuestions = onSnapshot(qQuestions, (snapshot) => {
       setQuestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const unsubContent = onSnapshot(doc(db, 'siteSettings', 'content'), (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setSiteContent(data);
+        setContentFormData(prev => ({ ...prev, ...data }));
+      }
       setLoading(false);
     });
 
@@ -67,26 +91,44 @@ export default function AdminDashboard() {
       unsubUsers();
       unsubApps();
       unsubQuestions();
+      unsubContent();
     };
   }, []);
+
+  const handleContentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const loadingToast = toast.loading("Updating site content...");
+    try {
+      await setDoc(doc(db, 'siteSettings', 'content'), contentFormData);
+      toast.success("Site content updated successfully!", { id: loadingToast });
+    } catch (err) {
+      console.error("Error updating site content:", err);
+      toast.error("Error updating site content.", { id: loadingToast });
+    }
+  };
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       await updateDoc(doc(db, 'users', userId), { role: newRole });
+      toast.success(`User role updated to ${newRole}`);
     } catch (err) {
       console.error("Error updating role:", err);
+      toast.error("Failed to update user role");
     }
   };
 
   const handleVerificationChange = async (userId: string, isVerified: boolean) => {
     try {
       await updateDoc(doc(db, 'users', userId), { isVerifiedCreator: isVerified });
+      toast.success(`User verification status updated`);
     } catch (err) {
       console.error("Error updating verification:", err);
+      toast.error("Failed to update verification status");
     }
   };
 
   const handleApproveApplication = async (app: any) => {
+    const loadingToast = toast.loading("Approving application...");
     try {
       // 1. Update application status
       await updateDoc(doc(db, 'contestantApplications', app.id), { status: 'approved' });
@@ -105,17 +147,20 @@ export default function AdminDashboard() {
         createdAt: new Date().toISOString()
       });
 
-      alert("Application approved and contestant created!");
+      toast.success("Application approved and contestant created!", { id: loadingToast });
     } catch (err) {
       console.error("Error approving application:", err);
+      toast.error("Failed to approve application", { id: loadingToast });
     }
   };
 
   const handleRejectApplication = async (appId: string) => {
     try {
       await updateDoc(doc(db, 'contestantApplications', appId), { status: 'rejected' });
+      toast.success("Application rejected");
     } catch (err) {
       console.error("Error rejecting application:", err);
+      toast.error("Failed to reject application");
     }
   };
 
@@ -238,6 +283,12 @@ export default function AdminDashboard() {
             >
               <HelpCircle className="w-4 h-4 mr-2" /> Questions
             </button>
+            <button 
+              onClick={() => setActiveTab('content')}
+              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'content' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
+            >
+              <Layout className="w-4 h-4 mr-2" /> Site Content
+            </button>
           </div>
         </div>
 
@@ -315,15 +366,22 @@ export default function AdminDashboard() {
                   </div>
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Profile Image URL</label>
-                      <input 
-                        type="url" 
-                        required
-                        value={formData.image}
-                        onChange={(e) => setFormData({...formData, image: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
-                        placeholder="https://..."
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Profile Image</label>
+                      <ImageUpload 
+                        folder="contestants"
+                        initialImage={formData.image}
+                        onUploadComplete={(url) => setFormData({...formData, image: url})}
                       />
+                      <div className="mt-4">
+                        <label className="block text-xs font-bold text-gray-400 mb-2">Or use Image URL</label>
+                        <input 
+                          type="url" 
+                          value={formData.image}
+                          onChange={(e) => setFormData({...formData, image: e.target.value})}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                          placeholder="https://..."
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Biography</label>
@@ -530,6 +588,174 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+          </div>
+        ) : activeTab === 'content' ? (
+          <div className="space-y-8">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-gray-100"
+            >
+              <h2 className="text-2xl font-bold mb-8">Manage Site Content</h2>
+              
+              <form onSubmit={handleContentSubmit} className="space-y-12">
+                {/* Hero Section */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-brand-orange flex items-center">
+                    <Layout className="w-5 h-5 mr-2" /> Hero Section
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Hero Title</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.heroTitle}
+                          onChange={(e) => setContentFormData({...contentFormData, heroTitle: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Hero Subtitle</label>
+                        <textarea 
+                          rows={3}
+                          required
+                          value={contentFormData.heroSubtitle}
+                          onChange={(e) => setContentFormData({...contentFormData, heroSubtitle: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none resize-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Hero Image</label>
+                      <ImageUpload 
+                        folder="site"
+                        initialImage={contentFormData.heroImage}
+                        onUploadComplete={(url) => setContentFormData({...contentFormData, heroImage: url})}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* About Section */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-brand-orange flex items-center">
+                    <ImageIcon className="w-5 h-5 mr-2" /> About Section
+                  </h3>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">About Title</label>
+                      <input 
+                        type="text"
+                        required
+                        value={contentFormData.aboutTitle}
+                        onChange={(e) => setContentFormData({...contentFormData, aboutTitle: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">About Text</label>
+                      <textarea 
+                        rows={4}
+                        required
+                        value={contentFormData.aboutText}
+                        onChange={(e) => setContentFormData({...contentFormData, aboutText: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact & Footer */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-brand-orange flex items-center">
+                    <Users className="w-5 h-5 mr-2" /> Contact & Footer
+                  </h3>
+                  <div className="grid md:grid-cols-3 gap-8">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Contact Email</label>
+                      <input 
+                        type="email"
+                        required
+                        value={contentFormData.contactEmail}
+                        onChange={(e) => setContentFormData({...contentFormData, contactEmail: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Contact Phone</label>
+                      <input 
+                        type="text"
+                        required
+                        value={contentFormData.contactPhone}
+                        onChange={(e) => setContentFormData({...contentFormData, contactPhone: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Footer Text</label>
+                      <input 
+                        type="text"
+                        required
+                        value={contentFormData.footerText}
+                        onChange={(e) => setContentFormData({...contentFormData, footerText: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button 
+                    type="submit"
+                    className="bg-brand-black text-white px-12 py-4 rounded-2xl font-bold hover:bg-brand-orange transition-all flex items-center"
+                  >
+                    <Save className="w-5 h-5 mr-2" /> Save All Site Content
+                  </button>
+                </div>
+              </form>
+
+              {/* Storage Setup Guide */}
+              <div className="mt-20 pt-20 border-t border-gray-100">
+                <div className="flex items-center mb-6">
+                  <Terminal className="w-6 h-6 text-brand-orange mr-3" />
+                  <h3 className="text-xl font-bold">Firebase Storage Setup (CORS)</h3>
+                </div>
+                <div className="bg-gray-900 rounded-3xl p-8 text-gray-300 font-mono text-sm space-y-6 overflow-x-auto">
+                  <p className="text-brand-orange font-bold mb-4"># Follow these steps to enable image uploads from any domain:</p>
+                  
+                  <div className="space-y-2">
+                    <p className="text-white">1. Create a file named <span className="text-brand-orange">cors.json</span>:</p>
+                    <pre className="bg-black/50 p-4 rounded-xl text-green-400">
+{`[
+  {
+    "origin": ["*"],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "maxAgeSeconds": 3600
+  }
+]`}
+                    </pre>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-white">2. Apply the configuration using gsutil:</p>
+                    <p className="text-xs text-gray-500 italic"># Replace YOUR_BUCKET_NAME with your Firebase Storage bucket ID</p>
+                    <pre className="bg-black/50 p-4 rounded-xl text-brand-orange">
+                      gsutil cors set cors.json gs://YOUR_BUCKET_NAME
+                    </pre>
+                  </div>
+
+                  <div className="flex items-start bg-brand-orange/10 p-4 rounded-xl border border-brand-orange/20 mt-6">
+                    <Info className="w-5 h-5 text-brand-orange mr-3 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      This configuration allows your website to upload files directly to Firebase Storage. 
+                      You can run these commands in the <span className="text-white font-bold">Google Cloud Shell</span>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         ) : activeTab === 'users' ? (
           <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">

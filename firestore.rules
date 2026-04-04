@@ -28,6 +28,12 @@ service cloud.firestore {
       allow update: if isOwner(userId) || isAdmin();
     }
 
+    // Site Settings
+    match /siteSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Contestants
     match /contestants/{contestantId} {
       allow read: if true;

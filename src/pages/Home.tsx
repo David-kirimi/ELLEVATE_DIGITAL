@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, CheckCircle2, Target, Users, Heart, Coins, MessageSquare, ChevronRight } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc } from 'firebase/firestore';
 import ContestantCard from '../components/ContestantCard';
 import { Link } from 'react-router-dom';
 
 export default function Home() {
   const [topContestants, setTopContestants] = useState<any[]>([]);
+  const [siteContent, setSiteContent] = useState<any>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'contestants'), orderBy('votes', 'desc'), limit(4));
@@ -20,7 +21,19 @@ export default function Home() {
         console.error("Error fetching top contestants:", error);
       }
     );
-    return () => unsubscribe();
+
+    const unsubContent = onSnapshot(doc(db, 'siteSettings', 'content'), (doc) => {
+      if (doc.exists()) {
+        setSiteContent(doc.data());
+      }
+    }, (error) => {
+      console.error("Home.tsx siteSettings error:", error);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubContent();
+    };
   }, []);
 
   return (
@@ -38,11 +51,11 @@ export default function Home() {
               <div className="inline-flex items-center space-x-2 bg-brand-orange/10 text-brand-orange px-4 py-2 rounded-full mb-6">
                 <span className="text-xs font-bold uppercase tracking-wider">Top Agency in Kenya</span>
               </div>
-              <h1 className="text-5xl md:text-7xl mb-6 leading-[1.1]">
-                ELIAX <span className="text-brand-orange italic">DIGITAL</span> MARKETING
+              <h1 className="text-5xl md:text-7xl mb-6 leading-[1.1] uppercase">
+                {siteContent?.heroTitle || 'VOTE FOR YOUR FAVORITE TALENT'}
               </h1>
               <p className="text-lg text-gray-600 mb-10 max-w-lg">
-                We help brands grow online and provide a platform for the next generation of stars to compete and win.
+                {siteContent?.heroSubtitle || 'Empowering the next generation of Kalenjin stars through community-driven recognition and support.'}
               </p>
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                 <Link 
@@ -65,11 +78,11 @@ export default function Home() {
               transition={{ duration: 0.8 }}
               className="relative"
             >
-              <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl">
+              <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl aspect-[4/5]">
                 <img 
-                  src="https://picsum.photos/seed/eliax-hero/800/1000" 
+                  src={siteContent?.heroImage || "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80"} 
                   alt="Marketing & Competition" 
-                  className="w-full h-auto"
+                  className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               </div>
@@ -113,6 +126,42 @@ export default function Home() {
                 <div key={i} className="bg-white rounded-3xl p-8 h-96 animate-pulse border border-gray-100" />
               ))
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="order-2 md:order-1">
+              <h2 className="text-4xl md:text-5xl mb-8 uppercase leading-tight">
+                {siteContent?.aboutTitle || 'CELEBRATING EXCELLENCE'}
+              </h2>
+              <p className="text-lg text-gray-600 leading-relaxed mb-8">
+                {siteContent?.aboutText || 'The Kalenjin Crown Awards is a premier platform dedicated to discovering, nurturing, and celebrating the diverse talents within the Kalenjin community. From music and arts to modeling and innovation, we provide a stage for excellence to shine.'}
+              </p>
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <p className="text-3xl font-bold text-brand-orange mb-1">2026</p>
+                  <p className="text-sm text-gray-500 font-bold uppercase">Next Big Event</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-brand-orange mb-1">10+</p>
+                  <p className="text-sm text-gray-500 font-bold uppercase">Categories</p>
+                </div>
+              </div>
+            </div>
+            <div className="order-1 md:order-2 relative">
+              <div className="aspect-square rounded-[40px] overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80" 
+                  alt="Awards Ceremony" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-8 -right-8 w-48 h-48 bg-brand-orange rounded-full -z-10" />
+            </div>
           </div>
         </div>
       </section>

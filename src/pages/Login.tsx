@@ -1,26 +1,31 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { LogIn, Mail, Lock, AlertCircle, Chrome } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, Chrome, Loader2 } from 'lucide-react';
 import { loginWithEmail, signInWithGoogle } from '../firebase';
+import toast from 'react-hot-toast';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+      const msg = "Password must be at least 6 characters long.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
     setError(null);
+    const loadingToast = toast.loading("Signing in...");
     try {
       // Special check for superadmin bootstrap
       if (email === 'superadmin@eliax.com' && password === '123456') {
@@ -41,33 +46,41 @@ export default function Login() {
       } else {
         await loginWithEmail(email, password);
       }
+      toast.success("Welcome back!", { id: loadingToast });
       navigate('/');
     } catch (err: any) {
       console.error("Login error details:", err);
+      let msg = err.message;
       if (err.code === 'auth/network-request-failed') {
-        setError("Network error: Please check your internet connection or disable any ad-blockers that might be blocking Firebase.");
+        msg = "Network error: Please check your internet connection or disable any ad-blockers that might be blocking Firebase.";
       } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError("Invalid email or password. Please try again.");
+        msg = "Invalid email or password. Please try again.";
       } else if (err.message?.includes('Missing or insufficient permissions')) {
-        setError("Database permission error. Please contact support or try again later.");
-      } else {
-        setError(err.message);
+        msg = "Database permission error. Please contact support or try again later.";
       }
+      setError(msg);
+      toast.error(msg, { id: loadingToast });
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    const loadingToast = toast.loading("Connecting to Google...");
     try {
       await signInWithGoogle();
+      toast.success("Signed in with Google!", { id: loadingToast });
       navigate('/');
     } catch (err: any) {
+      let msg = err.message;
       if (err.code === 'auth/network-request-failed') {
-        setError("Network error: Please check your internet connection or disable any ad-blockers that might be blocking Firebase.");
-      } else {
-        setError(err.message);
+        msg = "Network error: Please check your internet connection or disable any ad-blockers that might be blocking Firebase.";
       }
+      setError(msg);
+      toast.error(msg, { id: loadingToast });
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -145,9 +158,16 @@ export default function Login() {
 
         <button 
           onClick={handleGoogleSignIn}
-          className="mt-8 w-full bg-white border border-gray-200 text-gray-700 py-4 rounded-2xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center"
+          disabled={googleLoading || loading}
+          className="mt-8 w-full bg-white border border-gray-200 text-gray-700 py-4 rounded-2xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center disabled:opacity-50"
         >
-          <Chrome className="w-5 h-5 mr-2 text-blue-500" /> Sign in with Google
+          {googleLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              <Chrome className="w-5 h-5 mr-2 text-blue-500" /> Sign in with Google
+            </>
+          )}
         </button>
 
         <p className="mt-10 text-center text-gray-500 text-sm">
