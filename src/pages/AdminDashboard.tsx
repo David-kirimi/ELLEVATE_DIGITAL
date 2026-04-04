@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle, Music, Music2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle, Music, Music2, ShoppingCart, Heart } from 'lucide-react';
 import { db, auth } from '../firebase';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
@@ -24,9 +24,11 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [votes, setVotes] = useState<any[]>([]);
   const [siteContent, setSiteContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music' | 'mpesa'>('contestants');
+  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music' | 'mpesa' | 'transactions' | 'votes'>('contestants');
   const [mpesaSettings, setMpesaSettings] = useState({
     consumerKey: '',
     consumerSecret: '',
@@ -132,6 +134,16 @@ export default function AdminDashboard() {
       setLoading(false);
     });
 
+    const qTransactions = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'));
+    const unsubTransactions = onSnapshot(qTransactions, (snapshot) => {
+      setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const qVotes = query(collection(db, 'votes'), orderBy('timestamp', 'desc'));
+    const unsubVotes = onSnapshot(qVotes, (snapshot) => {
+      setVotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     return () => {
       unsubContestants();
       unsubUsers();
@@ -139,6 +151,8 @@ export default function AdminDashboard() {
       unsubQuestions();
       unsubContent();
       unsubMpesa();
+      unsubTransactions();
+      unsubVotes();
     };
   }, []);
 
@@ -502,6 +516,18 @@ export default function AdminDashboard() {
               className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'mpesa' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
             >
               <Shield className="w-4 h-4 mr-2" /> M-Pesa
+            </button>
+            <button 
+              onClick={() => setActiveTab('transactions')}
+              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'transactions' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" /> Transactions
+            </button>
+            <button 
+              onClick={() => setActiveTab('votes')}
+              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'votes' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
+            >
+              <Heart className="w-4 h-4 mr-2" /> Votes
             </button>
           </div>
         </div>
@@ -1293,6 +1319,135 @@ export default function AdminDashboard() {
                 </div>
               </form>
             </motion.div>
+          </div>
+        ) : activeTab === 'transactions' ? (
+          <div className="space-y-8">
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Total Transactions</p>
+                <p className="text-3xl font-bold">{transactions.length}</p>
+              </div>
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Total Revenue</p>
+                <p className="text-3xl font-bold text-green-600">
+                  KSh {transactions.filter(t => t.status === 'completed').reduce((acc, curr) => acc + (curr.amount || 0), 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Total Points Sold</p>
+                <p className="text-3xl font-bold text-brand-orange">
+                  {transactions.filter(t => t.status === 'completed').reduce((acc, curr) => acc + (curr.points || 0), 0).toLocaleString()} pts
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Transaction ID</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">User</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Phone</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Amount</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Points</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Status</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {transactions.map((t) => (
+                      <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-8 py-6 font-mono text-xs text-gray-400">{t.id}</td>
+                        <td className="px-8 py-6">
+                          <p className="font-bold">{t.userEmail}</p>
+                          <p className="text-[10px] text-gray-400 font-mono">{t.userId}</p>
+                        </td>
+                        <td className="px-8 py-6 text-sm">{t.phoneNumber}</td>
+                        <td className="px-8 py-6 font-bold">KSh {t.amount}</td>
+                        <td className="px-8 py-6 font-bold text-brand-orange">{t.points} pts</td>
+                        <td className="px-8 py-6">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            t.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
+                          }`}>
+                            {t.status}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6 text-xs text-gray-500">
+                          {new Date(t.timestamp).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                    {transactions.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-8 py-12 text-center text-gray-500">
+                          No transactions found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'votes' ? (
+          <div className="space-y-8">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Total Votes Recorded</p>
+                <p className="text-3xl font-bold">{votes.length}</p>
+              </div>
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Total Points Spent</p>
+                <p className="text-3xl font-bold text-brand-orange">
+                  {votes.reduce((acc, curr) => acc + (curr.pointsSpent || 0), 0).toLocaleString()} pts
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Vote ID</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Voter (UID)</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Contestant</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Points Spent</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {votes.map((v) => {
+                      const contestant = contestants.find(c => c.id === v.contestantId);
+                      return (
+                        <tr key={v.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-8 py-6 font-mono text-xs text-gray-400">{v.id}</td>
+                          <td className="px-8 py-6 text-xs font-mono text-gray-500">{v.fanUid}</td>
+                          <td className="px-8 py-6">
+                            <div className="flex items-center space-x-3">
+                              {contestant?.image && <img src={contestant.image} className="w-8 h-8 rounded-full object-cover" />}
+                              <span className="font-bold">{contestant?.name || 'Unknown'}</span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 font-bold text-brand-orange">{v.pointsSpent} pts</td>
+                          <td className="px-8 py-6 text-xs text-gray-500">
+                            {v.timestamp?.toDate ? v.timestamp.toDate().toLocaleString() : 'N/A'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {votes.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-12 text-center text-gray-500">
+                          No votes found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         ) : activeTab === 'users' ? (
           <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">

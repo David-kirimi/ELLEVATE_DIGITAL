@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Coins, CheckCircle2, AlertCircle, ShoppingCart, ArrowRight, Phone } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { doc, updateDoc, increment, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, increment, getDoc, onSnapshot, collection, addDoc } from 'firebase/firestore';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -67,6 +67,19 @@ export default function Points() {
         toast.success("STK Push sent! Please check your phone to complete payment.", { id: loadingToast });
         setSuccess(`STK Push sent to ${formattedPhone}. Once you enter your PIN, your points will be added automatically.`);
         
+        // Record the transaction as pending
+        const transactionRef = await addDoc(collection(db, 'transactions'), {
+          userId: auth.currentUser.uid,
+          userEmail: auth.currentUser.email,
+          phoneNumber: formattedPhone,
+          amount: pack.price,
+          points: pack.points,
+          status: 'pending',
+          merchantRequestId: response.data.MerchantRequestID,
+          checkoutRequestId: response.data.CheckoutRequestID,
+          timestamp: new Date().toISOString()
+        });
+
         // In this demo, we'll simulate the successful callback after 10 seconds
         // because we don't have a public URL for Safaricom to hit.
         setTimeout(async () => {
@@ -75,6 +88,13 @@ export default function Points() {
             await updateDoc(userDocRef, {
               points: increment(pack.points)
             });
+            
+            // Update transaction status
+            await updateDoc(transactionRef, {
+              status: 'completed',
+              completedAt: new Date().toISOString()
+            });
+
             toast.success(`Payment confirmed! Added ${pack.points} points.`);
           } catch (err) {
             console.error("Error updating points after simulation:", err);
