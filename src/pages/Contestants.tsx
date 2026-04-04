@@ -13,11 +13,17 @@ export default function Contestants() {
 
   useEffect(() => {
     const q = collection(db, 'contestants');
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setContestants(data);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setContestants(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching contestants:", error);
+        setLoading(false);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
@@ -53,7 +59,7 @@ export default function Contestants() {
           </div>
           
           {/* Admin Seed Button (Development only) */}
-          {auth.currentUser?.email === 'muriiradavie@gmail.com' && contestants.length === 0 && (
+          {(auth.currentUser?.email === 'muriiradavie@gmail.com' || auth.currentUser?.email === 'superadmin@eliax.com') && contestants.length === 0 && (
             <button 
               onClick={seedData}
               className="bg-brand-black text-white px-6 py-2 rounded-full text-sm font-bold flex items-center"

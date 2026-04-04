@@ -2,7 +2,7 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "A user of the platform (fan or contestant).",
+      "description": "A user of the platform (fan, contestant, or creator).",
       "type": "object",
       "properties": {
         "uid": { "type": "string", "description": "The unique user ID." },
@@ -10,9 +10,63 @@
         "email": { "type": "string", "description": "The user's email address." },
         "photoURL": { "type": "string", "description": "The user's profile photo URL." },
         "points": { "type": "number", "description": "The user's current points balance." },
-        "role": { "type": "string", "enum": ["fan", "contestant", "admin"], "description": "The user's role." }
+        "role": { "type": "string", "enum": ["fan", "contestant", "creator", "admin"], "description": "The user's role." },
+        "isVerifiedCreator": { "type": "boolean", "description": "Whether the user is a verified course creator." }
       },
       "required": ["uid", "displayName", "email", "points", "role"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Public metadata for a video course.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The course's unique ID." },
+        "title": { "type": "string", "description": "The title of the course." },
+        "description": { "type": "string", "description": "A detailed description of the course." },
+        "creatorUid": { "type": "string", "description": "The user ID of the creator." },
+        "creatorName": { "type": "string", "description": "The name of the creator." },
+        "thumbnail": { "type": "string", "description": "The course thumbnail URL." },
+        "price": { "type": "number", "description": "The price in points (0 for subscription-only)." },
+        "isSubscriptionOnly": { "type": "boolean", "description": "Whether the course is only available via subscription." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the course was created." }
+      },
+      "required": ["id", "title", "creatorUid", "price", "createdAt"]
+    },
+    "CourseContent": {
+      "title": "CourseContent",
+      "description": "Private content for a video course (e.g., video URL).",
+      "type": "object",
+      "properties": {
+        "courseId": { "type": "string", "description": "The ID of the associated course." },
+        "videoUrl": { "type": "string", "description": "The YouTube embed link." }
+      },
+      "required": ["courseId", "videoUrl"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "A record of a course purchase.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The purchase's unique ID." },
+        "userUid": { "type": "string", "description": "The user ID of the buyer." },
+        "courseId": { "type": "string", "description": "The ID of the purchased course." },
+        "amountPaid": { "type": "number", "description": "The amount paid in points." },
+        "platformShare": { "type": "number", "description": "The platform's share of the revenue." },
+        "creatorShare": { "type": "number", "description": "The creator's share of the revenue." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the purchase occurred." }
+      },
+      "required": ["id", "userUid", "courseId", "amountPaid", "timestamp"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "A user's subscription to all courses.",
+      "type": "object",
+      "properties": {
+        "userUid": { "type": "string", "description": "The user ID of the subscriber." },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "When the subscription expires." },
+        "status": { "type": "string", "enum": ["active", "expired"], "description": "The subscription status." }
+      },
+      "required": ["userUid", "expiresAt", "status"]
     },
     "Contestant": {
       "title": "Contestant",
@@ -25,9 +79,47 @@
         "bio": { "type": "string", "description": "A short bio of the contestant." },
         "image": { "type": "string", "description": "The contestant's profile image URL." },
         "votes": { "type": "number", "description": "The total number of votes received." },
-        "uid": { "type": "string", "description": "The user ID of the contestant." }
+        "uid": { "type": "string", "description": "The user ID of the contestant." },
+        "competitionId": { "type": "string", "description": "The ID of the competition they are participating in (e.g., 'kalenjin-crown-2026')." },
+        "socials": {
+          "type": "object",
+          "properties": {
+            "instagram": { "type": "string" },
+            "facebook": { "type": "string" },
+            "twitter": { "type": "string" },
+            "youtube": { "type": "string" }
+          }
+        }
       },
       "required": ["id", "name", "category", "image", "votes"]
+    },
+    "ContestantPost": {
+      "title": "ContestantPost",
+      "description": "A post (work) shared by a contestant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The post's unique ID." },
+        "contestantUid": { "type": "string", "description": "The user ID of the contestant." },
+        "title": { "type": "string", "description": "Title of the work." },
+        "description": { "type": "string", "description": "Description of the work." },
+        "mediaUrl": { "type": "string", "description": "URL to the media (image or video)." },
+        "mediaType": { "type": "string", "enum": ["image", "video"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "contestantUid", "title", "mediaUrl", "mediaType", "timestamp"]
+    },
+    "ApplicationQuestion": {
+      "title": "ApplicationQuestion",
+      "description": "A question for the contestant application questionnaire.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "textarea", "select"] },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "question", "type", "order"]
     },
     "Vote": {
       "title": "Vote",
@@ -41,6 +133,23 @@
         "timestamp": { "type": "string", "format": "date-time", "description": "When the vote was cast." }
       },
       "required": ["id", "fanUid", "contestantId", "pointsSpent", "timestamp"]
+    },
+    "ContestantApplication": {
+      "title": "ContestantApplication",
+      "description": "An application submitted by a fan to become a contestant.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The application's unique ID." },
+        "userUid": { "type": "string", "description": "The user ID of the applicant." },
+        "fullName": { "type": "string", "description": "The applicant's full name." },
+        "category": { "type": "string", "enum": ["musician", "artist", "model"], "description": "The category they are applying for." },
+        "bio": { "type": "string", "description": "A short bio." },
+        "talentProofUrl": { "type": "string", "description": "A link to proof of talent (e.g., YouTube video, portfolio)." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "The application status." },
+        "answers": { "type": "object", "description": "Answers to dynamic questions." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the application was submitted." }
+      },
+      "required": ["id", "userUid", "fullName", "category", "talentProofUrl", "status", "timestamp"]
     }
   },
   "firestore": {
@@ -55,6 +164,34 @@
     "/votes/{voteId}": {
       "schema": "Vote",
       "description": "History of votes cast."
+    },
+    "/contestantApplications/{applicationId}": {
+      "schema": "ContestantApplication",
+      "description": "Applications to become a contestant."
+    },
+    "/applicationQuestions/{questionId}": {
+      "schema": "ApplicationQuestion",
+      "description": "Dynamic questions for contestant applications."
+    },
+    "/contestantPosts/{postId}": {
+      "schema": "ContestantPost",
+      "description": "Works shared by contestants."
+    },
+    "/courses/{courseId}": {
+      "schema": "Course",
+      "description": "Public course metadata."
+    },
+    "/courseContents/{courseId}": {
+      "schema": "CourseContent",
+      "description": "Private course content (video links)."
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "Purchase",
+      "description": "Records of course purchases."
+    },
+    "/subscriptions/{userId}": {
+      "schema": "Subscription",
+      "description": "User subscription status."
     }
   }
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, CheckCircle2, Target, Users, Heart, Coins, MessageSquare, ChevronRight } from 'lucide-react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import ContestantCard from '../components/ContestantCard';
 import { Link } from 'react-router-dom';
@@ -11,10 +11,15 @@ export default function Home() {
 
   useEffect(() => {
     const q = query(collection(db, 'contestants'), orderBy('votes', 'desc'), limit(4));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const contestants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTopContestants(contestants);
-    });
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const contestants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setTopContestants(contestants);
+      },
+      (error) => {
+        console.error("Error fetching top contestants:", error);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
@@ -41,7 +46,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                 <Link 
-                  to="/contestants" 
+                  to={auth.currentUser ? "/contestants" : "/signup"} 
                   className="bg-brand-orange text-white px-8 py-4 rounded-full font-bold flex items-center justify-center hover:shadow-lg hover:shadow-brand-orange/30 transition-all"
                 >
                   Vote Now <Heart className="ml-2 w-5 h-5" />

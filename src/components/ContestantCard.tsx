@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Heart, Coins, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, Coins, CheckCircle2, AlertCircle, Instagram, Facebook, Twitter, Youtube, ExternalLink } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { doc, updateDoc, increment, addDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
 
@@ -11,6 +12,12 @@ interface Contestant {
   bio: string;
   image: string;
   votes: number;
+  socials?: {
+    instagram?: string;
+    facebook?: string;
+    twitter?: string;
+    youtube?: string;
+  };
 }
 
 interface ContestantCardProps {
@@ -22,10 +29,11 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
   const [isVoting, setIsVoting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const navigate = useNavigate();
 
   const handleVote = async () => {
     if (!auth.currentUser) {
-      setError("Please sign in to vote");
+      navigate('/signup');
       return;
     }
 
@@ -107,6 +115,31 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
         <p className="text-gray-600 text-sm mb-6 line-clamp-2">
           {contestant.bio}
         </p>
+
+        {contestant.socials && (
+          <div className="flex space-x-3 mb-6">
+            {contestant.socials.instagram && (
+              <a href={contestant.socials.instagram} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-brand-orange transition-colors">
+                <Instagram className="w-4 h-4" />
+              </a>
+            )}
+            {contestant.socials.facebook && (
+              <a href={contestant.socials.facebook} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-brand-orange transition-colors">
+                <Facebook className="w-4 h-4" />
+              </a>
+            )}
+            {contestant.socials.twitter && (
+              <a href={contestant.socials.twitter} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-brand-orange transition-colors">
+                <Twitter className="w-4 h-4" />
+              </a>
+            )}
+            {contestant.socials.youtube && (
+              <a href={contestant.socials.youtube} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-brand-orange transition-colors">
+                <Youtube className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        )}
         
         <button
           onClick={handleVote}

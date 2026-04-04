@@ -21,6 +21,7 @@ import {
 export const NAV_LINKS = [
   { name: 'Home', href: '/' },
   { name: 'Contestants', href: '/contestants' },
+  { name: 'Courses', href: '/courses' },
   { name: 'Buy Points', href: '/points' },
 ];
 

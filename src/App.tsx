@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Instagram, 
@@ -7,20 +7,58 @@ import {
   Twitter, 
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  Shield
 } from 'lucide-react';
+import { auth, db } from './firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Contestants from './pages/Contestants';
 import Points from './pages/Points';
+import Courses from './pages/Courses';
+import CourseDetail from './pages/CourseDetail';
+import CreatorDashboard from './pages/CreatorDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import KalenjinAwards from './pages/KalenjinAwards';
+import Account from './pages/Account';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ContestantApplication from './pages/ContestantApplication';
+import ContestantDashboard from './pages/ContestantDashboard';
 
 export default function App() {
   const location = useLocation();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const unsubUser = onSnapshot(userDocRef, (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            setIsAdmin(data.role === 'admin' || user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com');
+          }
+        }, (error) => {
+          console.error("App.tsx onSnapshot error:", error);
+          // If it's a permission error, we might want to handle it gracefully
+          if (error.message.includes('insufficient permissions')) {
+            setIsAdmin(user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com');
+          }
+        });
+        return () => unsubUser();
+      } else {
+        setIsAdmin(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -31,6 +69,21 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/contestants" element={<Contestants />} />
           <Route path="/points" element={<Points />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/courses/:id" element={<CourseDetail />} />
+          <Route path="/creator" element={<CreatorDashboard />} />
+          <Route 
+            path="/admin" 
+            element={
+              isAdmin ? <AdminDashboard /> : <Navigate to="/login" replace />
+            } 
+          />
+          <Route path="/kalenjin-awards" element={<KalenjinAwards />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/apply" element={<ContestantApplication />} />
+          <Route path="/contestant-dashboard" element={<ContestantDashboard />} />
         </Routes>
       </main>
 
@@ -57,9 +110,26 @@ export default function App() {
             <div>
               <h4 className="font-bold mb-6">Quick Links</h4>
               <ul className="space-y-4 text-gray-400">
-                <li><a href="/" className="hover:text-white transition-colors">Home</a></li>
-                <li><a href="/contestants" className="hover:text-white transition-colors">Contestants</a></li>
-                <li><a href="/points" className="hover:text-white transition-colors">Buy Points</a></li>
+                <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
+                <li><Link to="/contestants" className="hover:text-white transition-colors">Contestants</Link></li>
+                <li><Link to="/points" className="hover:text-white transition-colors">Buy Points</Link></li>
+                {isAdmin && (
+                  <>
+                    <li>
+                      <Link to="/admin" className="text-brand-orange hover:text-white transition-colors flex items-center">
+                        <Shield className="w-3 h-3 mr-2" /> Admin Portal
+                      </Link>
+                    </li>
+                    <li>
+                      <button 
+                        onClick={() => auth.signOut()} 
+                        className="text-red-400 hover:text-red-300 transition-colors text-sm font-bold"
+                      >
+                        Logout Admin
+                      </button>
+                    </li>
+                  </>
+                )}
               </ul>
             </div>
             <div>

@@ -1,5 +1,4 @@
----
 deployment:
   tasks:
     - export DEPLOYPATH=/home/ntiqoylk/public_html
-    - /bin/cp -R dist/* $DEPLOYPATH
+    - /bin/cp -R * $DEPLOYPATH
