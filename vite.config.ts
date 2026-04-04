@@ -15,6 +15,17 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      minify: 'esbuild',
+      cssMinify: true,
+      rollupOptions: {
+        maxParallelFileOps: 2,
+      },
+      chunkSizeWarningLimit: 1000,
+    },
+    esbuild: {
+      logLevel: 'error',
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
