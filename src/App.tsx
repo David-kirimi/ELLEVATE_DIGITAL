@@ -9,7 +9,8 @@ import {
   Phone,
   MapPin,
   Shield,
-  Loader2
+  Loader2,
+  MessageCircle
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -70,6 +71,20 @@ export default function App() {
     <div className="min-h-screen bg-white">
       <Toaster position="top-center" reverseOrder={false} />
       <Navbar />
+      
+      {/* Floating WhatsApp Button */}
+      <a 
+        href={`https://wa.me/${siteContent?.contactPhone?.replace(/\D/g, '') || '254794415006'}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center justify-center group"
+        aria-label="Contact on WhatsApp"
+      >
+        <MessageCircle className="w-6 h-6" />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs group-hover:ml-2 transition-all duration-300 font-bold text-sm whitespace-nowrap">
+          Chat with us
+        </span>
+      </a>
       
       <main>
         <Routes>
