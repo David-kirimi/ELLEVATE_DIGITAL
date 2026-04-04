@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Video, Trash2, Edit2, Coins, TrendingUp, Users, ShieldCheck, X, Upload } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 export default function CreatorDashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const { user, userProfile: userData, loading: authLoading } = useAuth();
   const [courses, setCourses] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -23,34 +23,13 @@ export default function CreatorDashboard() {
   });
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
-      if (!user) {
-        setUserData(null);
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const userDocRef = doc(db, 'users', user.uid);
-    const unsubUser = onSnapshot(userDocRef, 
-      (doc) => {
-        if (doc.exists()) {
-          setUserData(doc.data());
-        }
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error listening to user data:", error);
-        setLoading(false);
-      }
-    );
-    return () => unsubUser();
-  }, [user]);
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(false);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user) return;

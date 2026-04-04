@@ -1,81 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User, Mail, Shield, Coins, Award, LogOut, Settings, ChevronRight, Trophy, Clock, CheckCircle, XCircle, LayoutDashboard } from 'lucide-react';
+import { User, Mail, Shield, Coins, Award, LogOut, Settings, ChevronRight, Trophy, Clock, CheckCircle, XCircle, LayoutDashboard, Heart, Star } from 'lucide-react';
 import { auth, db, logout } from '../firebase';
 import { doc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Account() {
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [votes, setVotes] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [application, setApplication] = useState<any>(null);
+  const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-      if (user) {
-        // Listen to user profile
-        const unsubProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-          if (doc.exists()) {
-            setUserProfile(doc.data());
-          }
-          setLoading(false);
-        });
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-        // Fetch recent votes
-        const fetchVotes = async () => {
-          const q = query(
-            collection(db, 'votes'),
-            where('fanUid', '==', user.uid),
-            orderBy('timestamp', 'desc'),
-            limit(5)
-          );
-          const snapshot = await getDocs(q);
-          setVotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        };
+    if (userProfile?.role === 'contestant') {
+      // Fetch rank
+      const q = query(
+        collection(db, 'contestants'),
+        where('competitionId', '==', 'kalenjin-crown-2026'),
+        orderBy('votes', 'desc')
+      );
+      getDocs(q).then(snapshot => {
+        const index = snapshot.docs.findIndex(d => d.data().uid === user.uid);
+        setRank(index !== -1 ? index + 1 : null);
+      });
+    }
 
-        // Fetch recent purchases
-        const fetchPurchases = async () => {
-          const q = query(
-            collection(db, 'purchases'),
-            where('userUid', '==', user.uid),
-            orderBy('timestamp', 'desc'),
-            limit(5)
-          );
-          const snapshot = await getDocs(q);
-          setPurchases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        };
+    // Fetch recent votes
+    const fetchVotes = async () => {
+      const q = query(
+        collection(db, 'votes'),
+        where('fanUid', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(5)
+      );
+      const snapshot = await getDocs(q);
+      setVotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    };
 
-        fetchVotes();
-        fetchPurchases();
+    // Fetch recent purchases
+    const fetchPurchases = async () => {
+      const q = query(
+        collection(db, 'purchases'),
+        where('userUid', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(5)
+      );
+      const snapshot = await getDocs(q);
+      setPurchases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    };
 
-        // Fetch application status
-        const fetchApp = async () => {
-          const q = query(
-            collection(db, 'contestantApplications'),
-            where('userUid', '==', user.uid),
-            orderBy('timestamp', 'desc'),
-            limit(1)
-          );
-          const snapshot = await getDocs(q);
-          if (!snapshot.empty) {
-            setApplication(snapshot.docs[0].data());
-          }
-        };
-        fetchApp();
+    fetchVotes();
+    fetchPurchases();
 
-        return () => unsubProfile();
-      } else {
-        setLoading(false);
+    // Fetch application status
+    const fetchApp = async () => {
+      const q = query(
+        collection(db, 'contestantApplications'),
+        where('userUid', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        setApplication(snapshot.docs[0].data());
       }
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
+    };
+    fetchApp();
+    setLoading(false);
+  }, [user, userProfile, authLoading]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (!auth.currentUser) return <div className="min-h-screen flex items-center justify-center">Please sign in to view your account.</div>;
+  if (!user) return <div className="min-h-screen flex items-center justify-center">Please sign in to view your account.</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-32 pb-20 px-6">
@@ -91,8 +95,8 @@ export default function Account() {
             >
               <div className="relative inline-block mb-6">
                 <img 
-                  src={auth.currentUser.photoURL || ''} 
-                  alt={auth.currentUser.displayName || ''} 
+                  src={user.photoURL || ''} 
+                  alt={user.displayName || ''} 
                   className="w-32 h-32 rounded-full border-4 border-brand-orange/20 p-1"
                 />
                 <div className="absolute bottom-0 right-0 bg-brand-orange text-white p-2 rounded-full shadow-lg">
@@ -100,13 +104,13 @@ export default function Account() {
                 </div>
               </div>
               
-              <h1 className="text-2xl font-bold mb-2">{auth.currentUser.displayName}</h1>
+              <h1 className="text-2xl font-bold mb-2">{user.displayName}</h1>
               <p className="text-gray-500 text-sm mb-6 flex items-center justify-center">
-                <Mail className="w-4 h-4 mr-2" /> {auth.currentUser.email}
+                <Mail className="w-4 h-4 mr-2" /> {user.email}
               </p>
               
-              <div className="inline-flex items-center px-4 py-2 bg-gray-100 rounded-full text-xs font-bold uppercase tracking-wider text-gray-600 mb-8">
-                Role: {userProfile?.role || 'Fan'}
+              <div className="inline-flex items-center px-4 py-2 bg-brand-orange/10 rounded-full text-xs font-bold uppercase tracking-wider text-brand-orange mb-8 border border-brand-orange/20">
+                {userProfile?.role === 'contestant' ? '🌟 Contestant Portal' : '👤 Fan Portal'}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -194,6 +198,53 @@ export default function Account() {
 
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
+            {userProfile?.role === 'contestant' ? (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-brand-orange text-white rounded-[40px] p-10 shadow-xl shadow-brand-orange/20 relative overflow-hidden"
+              >
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-3xl font-bold">Welcome back, {user.displayName}!</h2>
+                    {rank && (
+                      <div className="bg-white text-brand-orange px-4 py-2 rounded-xl font-bold shadow-lg">
+                        Rank #{rank}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-white/80 mb-8 max-w-md">Your talent is shining. Keep engaging with your fans and updating your work to climb the leaderboard.</p>
+                  <Link 
+                    to="/contestant-dashboard"
+                    className="inline-flex items-center px-8 py-4 bg-white text-brand-orange rounded-2xl font-bold hover:shadow-lg transition-all"
+                  >
+                    <LayoutDashboard className="w-5 h-5 mr-2" />
+                    Go to Contestant Dashboard
+                  </Link>
+                </div>
+                <Trophy className="absolute -right-10 -bottom-10 w-64 h-64 text-white/10 rotate-12" />
+              </motion.div>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-brand-black text-white rounded-[40px] p-10 shadow-xl relative overflow-hidden"
+              >
+                <div className="relative z-10">
+                  <h2 className="text-3xl font-bold mb-4">Fan Dashboard</h2>
+                  <p className="text-gray-400 mb-8 max-w-md">Support your favorite artists and help them win! Your votes make a difference in the Kalenjin Crown Awards.</p>
+                  <Link 
+                    to="/kalenjin-awards"
+                    className="inline-flex items-center px-8 py-4 bg-brand-orange text-white rounded-2xl font-bold hover:shadow-lg transition-all"
+                  >
+                    <Heart className="w-5 h-5 mr-2" />
+                    Cast Your Votes
+                  </Link>
+                </div>
+                <Star className="absolute -right-10 -bottom-10 w-64 h-64 text-white/5 -rotate-12" />
+              </motion.div>
+            )}
+
             {/* Recent Activity */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}

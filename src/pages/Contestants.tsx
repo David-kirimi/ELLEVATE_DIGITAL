@@ -35,12 +35,77 @@ export default function Contestants() {
 
   const seedData = async () => {
     const initialData = [
-      { name: "John Musician", category: "musician", bio: "Rising star from Nairobi with a soul-stirring voice.", image: "https://picsum.photos/seed/musician1/800/1000", votes: 120 },
-      { name: "Sarah Artist", category: "artist", bio: "Visual artist specializing in contemporary African art.", image: "https://picsum.photos/seed/artist1/800/1000", votes: 85 },
-      { name: "Linda Model", category: "model", bio: "International fashion model with a passion for sustainability.", image: "https://picsum.photos/seed/model1/800/1000", votes: 210 },
-      { name: "David Rapper", category: "musician", bio: "Lyrical genius bringing fresh vibes to the hip-hop scene.", image: "https://picsum.photos/seed/musician2/800/1000", votes: 150 },
-      { name: "Grace Painter", category: "artist", bio: "Abstract painter exploring the depths of human emotion.", image: "https://picsum.photos/seed/artist2/800/1000", votes: 95 },
-      { name: "Alex Model", category: "model", bio: "Commercial model known for high-energy campaigns.", image: "https://picsum.photos/seed/model2/800/1000", votes: 180 },
+      { 
+        name: "John Musician", 
+        category: "musician", 
+        bio: "Rising star from Nairobi with a soul-stirring voice.", 
+        image: "https://picsum.photos/seed/musician1/800/1000", 
+        votes: 120,
+        isVerified: true,
+        socials: {
+          instagram: "https://instagram.com",
+          facebook: "https://facebook.com",
+          youtube: "https://youtube.com"
+        },
+        songs: [
+          { id: "s1", title: "Nairobi Nights", votes: 45, youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" }
+        ]
+      },
+      { 
+        name: "Sarah Artist", 
+        category: "artist", 
+        bio: "Visual artist specializing in contemporary African art.", 
+        image: "https://picsum.photos/seed/artist1/800/1000", 
+        votes: 85,
+        isVerified: true,
+        socials: {
+          instagram: "https://instagram.com",
+          twitter: "https://twitter.com"
+        }
+      },
+      { 
+        name: "Linda Model", 
+        category: "model", 
+        bio: "International fashion model with a passion for sustainability.", 
+        image: "https://picsum.photos/seed/model1/800/1000", 
+        votes: 210,
+        isVerified: true,
+        socials: {
+          instagram: "https://instagram.com",
+          tiktok: "https://tiktok.com"
+        }
+      },
+      { 
+        name: "David Rapper", 
+        category: "musician", 
+        bio: "Lyrical genius bringing fresh vibes to the hip-hop scene.", 
+        image: "https://picsum.photos/seed/musician2/800/1000", 
+        votes: 150,
+        isVerified: true,
+        socials: {
+          youtube: "https://youtube.com",
+          spotify: "https://spotify.com"
+        },
+        songs: [
+          { id: "s2", title: "Street Vibes", votes: 30, youtubeUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" }
+        ]
+      },
+      { 
+        name: "Grace Painter", 
+        category: "artist", 
+        bio: "Abstract painter exploring the depths of human emotion.", 
+        image: "https://picsum.photos/seed/artist2/800/1000", 
+        votes: 95,
+        isVerified: true
+      },
+      { 
+        name: "Alex Model", 
+        category: "model", 
+        bio: "Commercial model known for high-energy campaigns.", 
+        image: "https://picsum.photos/seed/model2/800/1000", 
+        votes: 180,
+        isVerified: true
+      },
     ];
 
     for (const data of initialData) {

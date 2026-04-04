@@ -8,11 +8,13 @@ import {
   Mail,
   Phone,
   MapPin,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Toaster } from 'react-hot-toast';
+import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Contestants from './pages/Contestants';
@@ -30,9 +32,9 @@ import ContestantDashboard from './pages/ContestantDashboard';
 
 export default function App() {
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { isAdmin, loading: authLoading } = useAuth();
   const [siteContent, setSiteContent] = useState<any>(null);
+  const [contentLoading, setContentLoading] = useState(true);
 
   // Scroll to top on route change
   useEffect(() => {
@@ -40,67 +42,24 @@ export default function App() {
   }, [location.pathname]);
 
   useEffect(() => {
-    let unsubUser: (() => void) | null = null;
-    
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      // Clean up previous user listener if it exists
-      if (unsubUser) {
-        unsubUser();
-        unsubUser = null;
-      }
-
-      console.log("Auth state changed. User:", user?.email);
-
-      if (user) {
-        const userDocRef = doc(db, 'users', user.uid);
-        unsubUser = onSnapshot(userDocRef, (doc) => {
-          if (doc.exists()) {
-            const data = doc.data();
-            const adminStatus = data.role === 'admin' || user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com';
-            console.log("User data loaded. Admin status:", adminStatus, "Role:", data.role);
-            setIsAdmin(adminStatus);
-          } else {
-            // Fallback for admin emails if doc doesn't exist yet
-            const adminStatus = user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com';
-            console.log("User doc does not exist. Admin status (fallback):", adminStatus);
-            setIsAdmin(adminStatus);
-          }
-          setLoading(false);
-        }, (error) => {
-          console.error("App.tsx onSnapshot error:", error);
-          if (error.message.includes('insufficient permissions')) {
-            const adminStatus = user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com';
-            setIsAdmin(adminStatus);
-          }
-          setLoading(false);
-        });
-      } else {
-        console.log("No user logged in.");
-        setIsAdmin(false);
-        setLoading(false);
-      }
-    });
-
     const unsubContent = onSnapshot(doc(db, 'siteSettings', 'content'), (doc) => {
       if (doc.exists()) {
         setSiteContent(doc.data());
       }
+      setContentLoading(false);
     }, (error) => {
       console.error("App.tsx siteSettings error:", error);
+      setContentLoading(false);
     });
 
-    return () => {
-      unsubscribe();
-      if (unsubUser) unsubUser();
-      unsubContent();
-    };
+    return () => unsubContent();
   }, []);
 
-  if (loading) {
+  if (authLoading || contentLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <Loader2 className="w-12 h-12 text-brand-orange animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-bold animate-pulse">Initializing Eliax...</p>
         </div>
       </div>

@@ -37,8 +37,10 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function ContestantDashboard() {
+  const { user, loading: authLoading } = useAuth();
   const [contestant, setContestant] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [rank, setRank] = useState<number | null>(null);
@@ -71,67 +73,70 @@ export default function ContestantDashboard() {
       youtube: '',
       tiktok: '',
       spotify: ''
-    }
+    },
+    songs: [] as { id: string; title: string; votes: number; youtubeUrl?: string }[]
   });
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-      if (user) {
-        // Find contestant document for this user
-        const q = query(collection(db, 'contestants'), where('uid', '==', user.uid));
-        const unsubContestant = onSnapshot(q, (snapshot) => {
-          if (!snapshot.empty) {
-            const data = snapshot.docs[0].data();
-            setContestant({ id: snapshot.docs[0].id, ...data });
-            setProfileFormData({
-              bio: data.bio || '',
-              image: data.image || '',
-              socials: {
-                instagram: data.socials?.instagram || '',
-                facebook: data.socials?.facebook || '',
-                twitter: data.socials?.twitter || '',
-                youtube: data.socials?.youtube || '',
-                tiktok: data.socials?.tiktok || '',
-                spotify: data.socials?.spotify || ''
-              }
-            });
+    if (authLoading) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
 
-            // Calculate Rank
-            const allContestantsQuery = query(
-              collection(db, 'contestants'),
-              where('competitionId', '==', data.competitionId || 'general'),
-              orderBy('votes', 'desc')
-            );
-            getDocs(allContestantsQuery).then(allSnapshot => {
-              const index = allSnapshot.docs.findIndex(doc => doc.id === snapshot.docs[0].id);
-              setRank(index !== -1 ? index + 1 : null);
-            });
-
-            // Fetch posts
-            const qPosts = query(
-              collection(db, 'contestantPosts'), 
-              where('contestantUid', '==', user.uid),
-              orderBy('timestamp', 'desc')
-            );
-            onSnapshot(qPosts, (postSnapshot) => {
-              setPosts(postSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            });
-          } else {
-            // Not a contestant yet
-            navigate('/account');
-          }
-          setLoading(false);
+    // Find contestant document for this user
+    const q = query(collection(db, 'contestants'), where('uid', '==', user.uid));
+    const unsubContestant = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        setContestant({ id: snapshot.docs[0].id, ...data });
+        setProfileFormData({
+          bio: data.bio || '',
+          image: data.image || '',
+          socials: {
+            instagram: data.socials?.instagram || '',
+            facebook: data.socials?.facebook || '',
+            twitter: data.socials?.twitter || '',
+            youtube: data.socials?.youtube || '',
+            tiktok: data.socials?.tiktok || '',
+            spotify: data.socials?.spotify || ''
+          },
+          songs: data.songs || []
         });
 
-        return () => unsubContestant();
+        // Calculate Rank
+        const allContestantsQuery = query(
+          collection(db, 'contestants'),
+          where('competitionId', '==', data.competitionId || 'general'),
+          orderBy('votes', 'desc')
+        );
+        getDocs(allContestantsQuery).then(allSnapshot => {
+          const index = allSnapshot.docs.findIndex(doc => doc.id === snapshot.docs[0].id);
+          setRank(index !== -1 ? index + 1 : null);
+        });
+
+        // Fetch posts
+        const qPosts = query(
+          collection(db, 'contestantPosts'), 
+          where('contestantUid', '==', user.uid),
+          orderBy('timestamp', 'desc')
+        );
+        onSnapshot(qPosts, (postSnapshot) => {
+          setPosts(postSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
       } else {
-        navigate('/login');
+        // Not a contestant yet
+        navigate('/account');
       }
+      setLoading(false);
+    }, (error) => {
+      console.error("ContestantDashboard: Error fetching contestant data:", error);
+      setLoading(false);
     });
 
-    return () => unsubscribeAuth();
-  }, [navigate]);
+    return () => unsubContestant();
+  }, [user, authLoading, navigate]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,6 +341,65 @@ export default function ContestantDashboard() {
                     />
                   </div>
                 </div>
+
+                {contestant?.category === 'musician' && (
+                  <div className="mt-10 pt-10 border-t border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">KALENJIN BEST HIT SONG (Nominated Songs)</h3>
+                    <div className="space-y-6">
+                      {profileFormData.songs.map((song, idx) => (
+                        <div key={song.id} className="p-4 bg-gray-50 rounded-2xl space-y-3">
+                          <div className="flex gap-4 items-center">
+                            <div className="flex-1 relative">
+                              <Music2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                              <input 
+                                type="text"
+                                placeholder="Song Title"
+                                value={song.title}
+                                onChange={(e) => {
+                                  const newSongs = [...profileFormData.songs];
+                                  newSongs[idx].title = e.target.value;
+                                  setProfileFormData({...profileFormData, songs: newSongs});
+                                }}
+                                className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                              />
+                            </div>
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                const newSongs = profileFormData.songs.filter((_, i) => i !== idx);
+                                setProfileFormData({...profileFormData, songs: newSongs});
+                              }}
+                              className="p-4 text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <Video className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input 
+                              type="url"
+                              placeholder="YouTube Embed URL (e.g. https://www.youtube.com/embed/...)"
+                              value={song.youtubeUrl || ''}
+                              onChange={(e) => {
+                                const newSongs = [...profileFormData.songs];
+                                newSongs[idx].youtubeUrl = e.target.value;
+                                setProfileFormData({...profileFormData, songs: newSongs});
+                              }}
+                              className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      <button 
+                        type="button"
+                        onClick={() => setProfileFormData({...profileFormData, songs: [...profileFormData.songs, { id: Math.random().toString(36).substr(2, 9), title: '', votes: 0, youtubeUrl: '' }]})}
+                        className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:border-brand-orange hover:text-brand-orange transition-all"
+                      >
+                        + Add Nominated Song
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <button 
                   type="submit"

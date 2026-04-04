@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle, Music, Music2 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
@@ -25,10 +25,12 @@ export default function AdminDashboard() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [siteContent, setSiteContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content'>('contestants');
+  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music'>('contestants');
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingMusic, setIsAddingMusic] = useState(false);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingMusicId, setEditingMusicId] = useState<string | null>(null);
   
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -49,7 +51,23 @@ export default function AdminDashboard() {
     image: '',
     votes: 0,
     competitionId: 'general',
-    isVerified: false
+    isVerified: false,
+    socials: {
+      instagram: '',
+      facebook: '',
+      twitter: '',
+      youtube: '',
+      tiktok: '',
+      spotify: ''
+    },
+    songs: [] as { id: string; title: string; votes: number; youtubeUrl?: string }[]
+  });
+
+  const [musicFormData, setMusicFormData] = useState({
+    title: '',
+    youtubeUrl: '',
+    artistId: '',
+    votes: 0
   });
 
   const [contentFormData, setContentFormData] = useState({
@@ -139,6 +157,75 @@ export default function AdminDashboard() {
       console.error("Error updating verification:", err);
       toast.error("Failed to update verification status");
     }
+  };
+
+  const handleMusicSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!musicFormData.artistId) {
+      toast.error("Please select an artist");
+      return;
+    }
+
+    const loadingToast = toast.loading(editingMusicId ? "Updating song..." : "Adding song...");
+    try {
+      const artist = contestants.find(c => c.id === musicFormData.artistId);
+      if (!artist) throw new Error("Artist not found");
+
+      let updatedSongs = [...(artist.songs || [])];
+      const newSong = {
+        id: editingMusicId || Math.random().toString(36).substr(2, 9),
+        title: musicFormData.title,
+        youtubeUrl: musicFormData.youtubeUrl,
+        votes: musicFormData.votes || 0
+      };
+
+      if (editingMusicId) {
+        updatedSongs = updatedSongs.map(s => s.id === editingMusicId ? newSong : s);
+      } else {
+        updatedSongs.push(newSong);
+      }
+
+      await updateDoc(doc(db, 'contestants', musicFormData.artistId), { songs: updatedSongs });
+      
+      setIsAddingMusic(false);
+      setEditingMusicId(null);
+      setMusicFormData({ title: '', youtubeUrl: '', artistId: '', votes: 0 });
+      toast.success(editingMusicId ? "Song updated!" : "Song added!", { id: loadingToast });
+    } catch (err) {
+      console.error("Error saving music:", err);
+      toast.error("Failed to save music", { id: loadingToast });
+    }
+  };
+
+  const handleDeleteMusic = async (artistId: string, songId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Song',
+      message: 'Are you sure you want to delete this song? This will remove it from the artist\'s profile.',
+      onConfirm: async () => {
+        try {
+          const artist = contestants.find(c => c.id === artistId);
+          if (!artist) return;
+          const updatedSongs = artist.songs.filter((s: any) => s.id !== songId);
+          await updateDoc(doc(db, 'contestants', artistId), { songs: updatedSongs });
+          toast.success("Song deleted successfully");
+        } catch (err) {
+          console.error("Error deleting song:", err);
+          toast.error("Failed to delete song");
+        }
+      }
+    });
+  };
+
+  const handleEditMusic = (artistId: string, song: any) => {
+    setMusicFormData({
+      title: song.title,
+      youtubeUrl: song.youtubeUrl || '',
+      artistId: artistId,
+      votes: song.votes || 0
+    });
+    setEditingMusicId(song.id);
+    setIsAddingMusic(true);
   };
 
   const handleApproveApplication = async (app: any) => {
@@ -235,7 +322,16 @@ export default function AdminDashboard() {
         image: '',
         votes: 0,
         competitionId: 'general',
-        isVerified: false
+        isVerified: false,
+        socials: {
+          instagram: '',
+          facebook: '',
+          twitter: '',
+          youtube: '',
+          tiktok: '',
+          spotify: ''
+        },
+        songs: []
       });
     } catch (err) {
       console.error("Error saving contestant:", err);
@@ -252,7 +348,16 @@ export default function AdminDashboard() {
       image: contestant.image,
       votes: contestant.votes || 0,
       competitionId: contestant.competitionId || 'general',
-      isVerified: contestant.isVerified || false
+      isVerified: contestant.isVerified || false,
+      socials: {
+        instagram: contestant.socials?.instagram || '',
+        facebook: contestant.socials?.facebook || '',
+        twitter: contestant.socials?.twitter || '',
+        youtube: contestant.socials?.youtube || '',
+        tiktok: contestant.socials?.tiktok || '',
+        spotify: contestant.socials?.spotify || ''
+      },
+      songs: contestant.songs || []
     });
     setIsAdding(true);
   };
@@ -359,6 +464,12 @@ export default function AdminDashboard() {
             >
               <Layout className="w-4 h-4 mr-2" /> Site Content
             </button>
+            <button 
+              onClick={() => setActiveTab('music')}
+              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center ${activeTab === 'music' ? 'bg-brand-orange text-white' : 'text-gray-400 hover:text-brand-black'}`}
+            >
+              <Music className="w-4 h-4 mr-2" /> Music
+            </button>
           </div>
         </div>
       </div>
@@ -434,8 +545,7 @@ export default function AdminDashboard() {
                         className="w-5 h-5 rounded border-gray-300 text-brand-orange focus:ring-brand-orange"
                       />
                       <label htmlFor="isVerified" className="text-sm font-bold text-gray-700 cursor-pointer">Verified Contestant</label>
-                    </div>
-                    <div>
+                    </div>                    <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Initial Votes</label>
                       <input 
                         type="number" 
@@ -445,6 +555,105 @@ export default function AdminDashboard() {
                         className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
                       />
                     </div>
+
+                    <div className="space-y-4">
+                      <label className="block text-sm font-bold text-gray-700">Social Media Links</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <input 
+                          type="url" 
+                          placeholder="Instagram URL"
+                          value={formData.socials.instagram}
+                          onChange={(e) => setFormData({...formData, socials: {...formData.socials, instagram: e.target.value}})}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                        />
+                        <input 
+                          type="url" 
+                          placeholder="Facebook URL"
+                          value={formData.socials.facebook}
+                          onChange={(e) => setFormData({...formData, socials: {...formData.socials, facebook: e.target.value}})}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                        />
+                        <input 
+                          type="url" 
+                          placeholder="Twitter URL"
+                          value={formData.socials.twitter}
+                          onChange={(e) => setFormData({...formData, socials: {...formData.socials, twitter: e.target.value}})}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                        />
+                        <input 
+                          type="url" 
+                          placeholder="YouTube URL"
+                          value={formData.socials.youtube}
+                          onChange={(e) => setFormData({...formData, socials: {...formData.socials, youtube: e.target.value}})}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                        />
+                        <input 
+                          type="url" 
+                          placeholder="TikTok URL"
+                          value={formData.socials.tiktok}
+                          onChange={(e) => setFormData({...formData, socials: {...formData.socials, tiktok: e.target.value}})}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                        />
+                        <input 
+                          type="url" 
+                          placeholder="Spotify URL"
+                          value={formData.socials.spotify}
+                          onChange={(e) => setFormData({...formData, socials: {...formData.socials, spotify: e.target.value}})}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {formData.category === 'musician' && (
+                      <div className="space-y-4">
+                        <label className="block text-sm font-bold text-gray-700">Nominated Songs (KALENJIN BEST HIT SONG)</label>
+                        {formData.songs.map((song, idx) => (
+                          <div key={song.id} className="p-4 bg-gray-50 rounded-2xl space-y-3">
+                            <div className="flex gap-2">
+                              <input 
+                                type="text"
+                                placeholder="Song Title"
+                                value={song.title}
+                                onChange={(e) => {
+                                  const newSongs = [...formData.songs];
+                                  newSongs[idx].title = e.target.value;
+                                  setFormData({...formData, songs: newSongs});
+                                }}
+                                className="flex-1 px-4 py-2 rounded-xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  const newSongs = formData.songs.filter((_, i) => i !== idx);
+                                  setFormData({...formData, songs: newSongs});
+                                }}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <input 
+                              type="url"
+                              placeholder="YouTube Embed URL (e.g. https://www.youtube.com/embed/...)"
+                              value={song.youtubeUrl || ''}
+                              onChange={(e) => {
+                                const newSongs = [...formData.songs];
+                                newSongs[idx].youtubeUrl = e.target.value;
+                                setFormData({...formData, songs: newSongs});
+                              }}
+                              className="w-full px-4 py-2 rounded-xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none text-sm"
+                            />
+                          </div>
+                        ))}
+                        <button 
+                          type="button"
+                          onClick={() => setFormData({...formData, songs: [...formData.songs, { id: Math.random().toString(36).substr(2, 9), title: '', votes: 0, youtubeUrl: '' }]})}
+                          className="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-xs font-bold hover:border-brand-orange hover:text-brand-orange transition-all"
+                        >
+                          + Add Nominated Song
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-6">
                     <div>
@@ -804,6 +1013,153 @@ export default function AdminDashboard() {
                 </div>
               </form>
             </motion.div>
+          </div>
+        ) : activeTab === 'music' ? (
+          <div className="space-y-8">
+            {!isAddingMusic && (
+              <div className="flex justify-end">
+                <button 
+                  onClick={() => setIsAddingMusic(true)}
+                  className="bg-brand-black text-white px-8 py-4 rounded-2xl font-bold flex items-center hover:bg-brand-orange transition-all"
+                >
+                  <Plus className="w-5 h-5 mr-2" /> Add Nominated Song
+                </button>
+              </div>
+            )}
+
+            {isAddingMusic && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-gray-100"
+              >
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold">{editingMusicId ? 'Edit Song' : 'Add Nominated Song'}</h2>
+                  <button onClick={() => { setIsAddingMusic(false); setEditingMusicId(null); }} className="text-gray-400 hover:text-brand-black">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleMusicSubmit} className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Song Title</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={musicFormData.title}
+                        onChange={(e) => setMusicFormData({...musicFormData, title: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="e.g. My Best Hit"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">YouTube Embed URL</label>
+                      <input 
+                        type="url" 
+                        required
+                        value={musicFormData.youtubeUrl}
+                        onChange={(e) => setMusicFormData({...musicFormData, youtubeUrl: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="https://www.youtube.com/embed/..."
+                      />
+                      <p className="mt-2 text-[10px] text-gray-400">Use the embed URL format: https://www.youtube.com/embed/VIDEO_ID</p>
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Nominated Artist</label>
+                      <select 
+                        required
+                        value={musicFormData.artistId}
+                        onChange={(e) => setMusicFormData({...musicFormData, artistId: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none appearance-none"
+                      >
+                        <option value="">Select an artist...</option>
+                        {contestants.filter(c => c.category === 'musician').map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Initial Votes</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={musicFormData.votes}
+                        onChange={(e) => setMusicFormData({...musicFormData, votes: parseInt(e.target.value) || 0})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                      />
+                    </div>
+                    <button 
+                      type="submit"
+                      className="w-full bg-brand-orange text-white py-4 rounded-2xl font-bold hover:shadow-lg transition-all flex items-center justify-center"
+                    >
+                      <Save className="w-5 h-5 mr-2" /> {editingMusicId ? 'Update Song' : 'Save Song'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+
+            <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Song Title</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Artist</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider text-center">Votes</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {contestants.filter(c => c.songs && c.songs.length > 0).flatMap(artist => 
+                      artist.songs.map((song: any) => (
+                        <tr key={song.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-8 py-6">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-10 h-10 bg-brand-orange/10 rounded-xl flex items-center justify-center">
+                                <Music className="w-5 h-5 text-brand-orange" />
+                              </div>
+                              <div>
+                                <p className="font-bold">{song.title}</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[200px]">{song.youtubeUrl}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="flex items-center space-x-3">
+                              <img src={artist.image} alt={artist.name} className="w-8 h-8 rounded-full object-cover" />
+                              <span className="font-bold text-sm">{artist.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 text-center font-bold text-brand-orange">
+                            {song.votes || 0}
+                          </td>
+                          <td className="px-8 py-6 text-right">
+                            <div className="flex justify-end space-x-2">
+                              <button 
+                                onClick={() => handleEditMusic(artist.id, song)}
+                                className="p-2 text-gray-400 hover:text-brand-orange hover:bg-brand-orange/10 rounded-lg transition-all"
+                              >
+                                <Edit2 className="w-5 h-5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteMusic(artist.id, song.id)}
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
         ) : activeTab === 'users' ? (

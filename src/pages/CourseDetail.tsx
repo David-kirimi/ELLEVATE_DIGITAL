@@ -4,44 +4,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Play, Lock, Coins, CheckCircle2, User, Clock, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, increment, updateDoc } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
   const [course, setCourse] = useState<any>(null);
   const [content, setContent] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const { user, userProfile: userData } = useAuth();
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
-      setUserData(null);
-      return;
-    }
-
-    const userDocRef = doc(db, 'users', user.uid);
-    const unsubUser = onSnapshot(userDocRef, 
-      (doc) => {
-        if (doc.exists()) {
-          setUserData(doc.data());
-        }
-      },
-      (error) => {
-        console.error("Error listening to user data:", error);
-      }
-    );
-    return () => unsubUser();
-  }, [user]);
 
   useEffect(() => {
     if (!id) return;

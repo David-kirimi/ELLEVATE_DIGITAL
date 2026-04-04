@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, collection, query, where, getDocs, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, collection, query, where, getDocs, onSnapshot, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -18,6 +18,20 @@ export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Connection test
+async function testConnection() {
+  try {
+    // Try to fetch a non-existent doc to test connection
+    await getDocFromServer(doc(db, '_connection_test_', 'ping'));
+    console.log("Firestore connection successful.");
+  } catch (error: any) {
+    if (error.message?.includes('the client is offline') || error.code === 'unavailable') {
+      console.error("Firestore connection failed: The client is offline or the database is unreachable. Please check your Firebase configuration and internet connection.");
+    }
+  }
+}
+testConnection();
 
 export enum OperationType {
   CREATE = 'create',

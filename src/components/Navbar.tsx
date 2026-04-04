@@ -4,54 +4,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X, User, LogIn, LogOut, Coins } from 'lucide-react';
 import { auth, signInWithGoogle, logout, db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [userPoints, setUserPoints] = useState<number>(0);
-  const [isCreator, setIsCreator] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, userProfile } = useAuth();
   const location = useLocation();
+
+  const userPoints = userProfile?.points || 0;
+  const isCreator = userProfile?.isVerifiedCreator || false;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
-      if (!user) {
-        setUserPoints(0);
-        setIsCreator(false);
-        setIsAdmin(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const userDocRef = doc(db, 'users', user.uid);
-    const unsubUser = onSnapshot(userDocRef, 
-      (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          setUserPoints(data.points || 0);
-          setIsCreator(data.isVerifiedCreator || false);
-          setIsAdmin(data.role === 'admin' || user.email === 'muriiradavie@gmail.com' || user.email === 'superadmin@eliax.com');
-        }
-      },
-      (error) => {
-        console.error("Error listening to user profile:", error);
-      }
-    );
-
-    return () => unsubUser();
-  }, [user]);
 
   const navLinks = [
     { name: 'Home', href: '/' },
