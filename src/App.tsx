@@ -27,7 +27,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Account from './pages/Account';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import ContestantApplication from './pages/ContestantApplication';
+import Application from './pages/Application';
 import ContestantDashboard from './pages/ContestantDashboard';
 
 export default function App() {
@@ -102,7 +102,10 @@ export default function App() {
           <Route path="/account" element={<Account />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/apply" element={<ContestantApplication />} />
+          <Route path="/apply" element={<Application />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/courses/:id" element={<CourseDetail />} />
+          <Route path="/creator-dashboard" element={<CreatorDashboard />} />
           <Route path="/contestant-dashboard" element={<ContestantDashboard />} />
           {/* Fallback route */}
           <Route 

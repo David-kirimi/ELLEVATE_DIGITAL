@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User, Mail, Shield, Coins, Award, LogOut, Settings, ChevronRight, Trophy, Clock, CheckCircle, XCircle, LayoutDashboard, Heart, Star } from 'lucide-react';
+import { User, Mail, Shield, Coins, Award, LogOut, Settings, ChevronRight, Trophy, Clock, CheckCircle, XCircle, LayoutDashboard, Heart, Star, Video } from 'lucide-react';
 import { auth, db, logout } from '../firebase';
 import { doc, onSnapshot, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Account() {
   const { user, userProfile, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [votes, setVotes] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
+  const [subscription, setSubscription] = useState<any>(null);
   const [application, setApplication] = useState<any>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +22,21 @@ export default function Account() {
       setLoading(false);
       return;
     }
+
+    // Fetch subscription
+    const fetchSubscription = async () => {
+      const q = query(
+        collection(db, 'subscriptions'),
+        where('userId', '==', user.uid),
+        where('expiresAt', '>', new Date().toISOString()),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        setSubscription(snapshot.docs[0].data());
+      }
+    };
+    fetchSubscription();
 
     if (userProfile?.role === 'contestant') {
       // Fetch rank
@@ -109,7 +126,7 @@ export default function Account() {
               </p>
               
               <div className="inline-flex items-center px-4 py-2 bg-brand-orange/10 rounded-full text-xs font-bold uppercase tracking-wider text-brand-orange mb-8 border border-brand-orange/20">
-                {userProfile?.role === 'contestant' ? '🌟 Contestant Portal' : '👤 Fan Portal'}
+                {userProfile?.role === 'contestant' ? '🌟 Contestant Portal' : userProfile?.isVerifiedCreator ? '🎨 Creator Portal' : '👤 Fan Portal'}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -127,6 +144,19 @@ export default function Account() {
             </motion.div>
 
             <div className="bg-white rounded-[40px] p-6 shadow-sm border border-gray-100 space-y-2">
+              {userProfile?.isVerifiedCreator && (
+                <Link 
+                  to="/creator-dashboard"
+                  className="w-full flex items-center justify-between p-4 bg-brand-black text-white rounded-2xl transition-all group mb-2 shadow-lg shadow-brand-black/20"
+                >
+                  <div className="flex items-center">
+                    <Video className="w-5 h-5 mr-3" />
+                    <span className="font-bold">Creator Dashboard</span>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-white/50" />
+                </Link>
+              )}
+
               {userProfile?.role === 'contestant' && (
                 <Link 
                   to="/contestant-dashboard"
@@ -243,6 +273,57 @@ export default function Account() {
                 <Star className="absolute -right-10 -bottom-10 w-64 h-64 text-white/5 -rotate-12" />
               </motion.div>
             )}
+
+            {/* Subscription Status */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-[40px] p-10 shadow-sm border border-gray-100"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold flex items-center">
+                  <Star className="w-6 h-6 mr-3 text-brand-orange" />
+                  Platform Subscription
+                </h2>
+                {subscription ? (
+                  <span className="px-4 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold uppercase tracking-widest">
+                    Active
+                  </span>
+                ) : (
+                  <span className="px-4 py-1 bg-red-100 text-red-600 rounded-full text-xs font-bold uppercase tracking-widest">
+                    No Active Plan
+                  </span>
+                )}
+              </div>
+
+              {subscription ? (
+                <div className="p-8 bg-gray-50 rounded-[32px] border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-gray-500 font-bold uppercase tracking-widest mb-1">Current Plan</p>
+                      <p className="text-2xl font-bold capitalize">{subscription.planId} Access</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500 font-bold uppercase tracking-widest mb-1">Expires On</p>
+                      <p className="text-lg font-bold">{new Date(subscription.expiresAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                    <div className="bg-brand-orange h-full w-full" />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-6">Unlock unlimited access to all courses and exclusive content.</p>
+                  <button 
+                    onClick={() => navigate('/points')} // Or a dedicated subscription page
+                    className="bg-brand-orange text-white px-8 py-4 rounded-2xl font-bold hover:shadow-lg transition-all"
+                  >
+                    Subscribe Now
+                  </button>
+                </div>
+              )}
+            </motion.div>
 
             {/* Recent Activity */}
             <motion.div 

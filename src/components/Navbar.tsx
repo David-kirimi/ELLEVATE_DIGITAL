@@ -78,9 +78,9 @@ export default function Navbar() {
           
           {user && isCreator && (
             <Link 
-              to="/creator" 
+              to="/creator-dashboard" 
               className={`text-sm font-medium transition-colors ${
-                location.pathname === '/creator' 
+                location.pathname === '/creator-dashboard' 
                   ? 'text-brand-orange' 
                   : (scrolled || location.pathname !== '/' ? 'text-gray-600 hover:text-brand-orange' : 'text-white/80 hover:text-white')
               }`}
@@ -167,6 +167,24 @@ export default function Navbar() {
                   {link.name}
                 </Link>
               ))}
+              {user && isCreator && (
+                <Link 
+                  to="/creator-dashboard" 
+                  className="text-lg font-medium text-brand-orange"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Creator Dashboard
+                </Link>
+              )}
+              {user && isAdmin && (
+                <Link 
+                  to="/admin" 
+                  className="text-lg font-medium text-brand-orange"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Admin Panel
+                </Link>
+              )}
               {user ? (
                 <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
                   <Link to="/account" onClick={() => setIsMenuOpen(false)} className="flex items-center space-x-3">

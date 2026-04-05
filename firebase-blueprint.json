@@ -23,14 +23,16 @@
         "id": { "type": "string", "description": "The course's unique ID." },
         "title": { "type": "string", "description": "The title of the course." },
         "description": { "type": "string", "description": "A detailed description of the course." },
+        "category": { "type": "string", "description": "The course category (e.g., science, tech)." },
         "creatorUid": { "type": "string", "description": "The user ID of the creator." },
         "creatorName": { "type": "string", "description": "The name of the creator." },
         "thumbnail": { "type": "string", "description": "The course thumbnail URL." },
         "price": { "type": "number", "description": "The price in points (0 for subscription-only)." },
         "isSubscriptionOnly": { "type": "boolean", "description": "Whether the course is only available via subscription." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "Moderation status." },
         "createdAt": { "type": "string", "format": "date-time", "description": "When the course was created." }
       },
-      "required": ["id", "title", "creatorUid", "price", "createdAt"]
+      "required": ["id", "title", "category", "creatorUid", "price", "status", "createdAt"]
     },
     "CourseContent": {
       "title": "CourseContent",
@@ -110,16 +112,17 @@
     },
     "ApplicationQuestion": {
       "title": "ApplicationQuestion",
-      "description": "A question for the contestant application questionnaire.",
+      "description": "A question for the application questionnaire (contestant or creator).",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "question": { "type": "string" },
         "type": { "type": "string", "enum": ["text", "textarea", "select"] },
         "options": { "type": "array", "items": { "type": "string" } },
-        "order": { "type": "number" }
+        "order": { "type": "number" },
+        "targetRole": { "type": "string", "enum": ["contestant", "creator"], "description": "Which role this question is for." }
       },
-      "required": ["id", "question", "type", "order"]
+      "required": ["id", "question", "type", "order", "targetRole"]
     },
     "Vote": {
       "title": "Vote",
@@ -136,20 +139,21 @@
     },
     "ContestantApplication": {
       "title": "ContestantApplication",
-      "description": "An application submitted by a fan to become a contestant.",
+      "description": "An application submitted by a fan to become a contestant or creator.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "The application's unique ID." },
         "userUid": { "type": "string", "description": "The user ID of the applicant." },
         "fullName": { "type": "string", "description": "The applicant's full name." },
-        "category": { "type": "string", "enum": ["musician", "artist", "model"], "description": "The category they are applying for." },
+        "role": { "type": "string", "enum": ["contestant", "creator"], "description": "The role they are applying for." },
+        "category": { "type": "string", "description": "The category they are applying for." },
         "bio": { "type": "string", "description": "A short bio." },
-        "talentProofUrl": { "type": "string", "description": "A link to proof of talent (e.g., YouTube video, portfolio)." },
+        "talentProofUrl": { "type": "string", "description": "A link to proof of talent/expertise." },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "The application status." },
         "answers": { "type": "object", "description": "Answers to dynamic questions." },
         "timestamp": { "type": "string", "format": "date-time", "description": "When the application was submitted." }
       },
-      "required": ["id", "userUid", "fullName", "category", "talentProofUrl", "status", "timestamp"]
+      "required": ["id", "userUid", "fullName", "role", "status", "timestamp"]
     }
   },
   "firestore": {

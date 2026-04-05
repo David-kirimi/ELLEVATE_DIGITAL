@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle, Music, Music2, ShoppingCart, Heart } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle, Music, Music2, ShoppingCart, Heart, Video, CheckCircle, UserPlus, Search } from 'lucide-react';
 import { db, auth } from '../firebase';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
@@ -16,7 +16,8 @@ import {
   query, 
   orderBy,
   setDoc,
-  getDoc
+  getDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 
 export default function AdminDashboard() {
@@ -26,10 +27,28 @@ export default function AdminDashboard() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [votes, setVotes] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [siteContent, setSiteContent] = useState<any>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music' | 'mpesa' | 'transactions' | 'votes'>('contestants');
+
+  const handleFirestoreError = (error: any, operation: string, path: string) => {
+    const errInfo = {
+      error: error.message || String(error),
+      operation,
+      path,
+      authInfo: {
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        emailVerified: auth.currentUser?.emailVerified,
+      }
+    };
+    console.error(`Firestore Error [${operation}] on [${path}]:`, JSON.stringify(errInfo));
+    // toast.error(`Permission denied for ${path}`);
+  };
+
+  const [activeTab, setActiveTab] = useState<'contestants' | 'users' | 'applications' | 'questions' | 'content' | 'music' | 'mpesa' | 'transactions' | 'votes' | 'courses' | 'subscriptions'>('contestants');
   const [mpesaSettings, setMpesaSettings] = useState({
     consumerKey: '',
     consumerSecret: '',
@@ -42,6 +61,11 @@ export default function AdminDashboard() {
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingMusicId, setEditingMusicId] = useState<string | null>(null);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [isAddingCourse, setIsAddingCourse] = useState(false);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState('');
   
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -104,36 +128,60 @@ export default function AdminDashboard() {
     whatsappNumber: '254794415006',
     pointsHelpTitle: 'Need help with payments?',
     pointsHelpText: 'We support M-Pesa, Card, and Bank transfers. If you encounter any issues with your purchase, our support team is available 24/7.',
-    pointsHelpButtonText: 'Contact Support'
+    pointsHelpButtonText: 'Contact Support',
+    subscriptionFee: 1000,
+    subscriptionDurationDays: 30
   });
 
   const [questionFormData, setQuestionFormData] = useState({
     question: '',
     type: 'text' as 'text' | 'textarea' | 'select',
     options: '',
-    order: 0
+    order: 0,
+    targetRole: 'contestant' as 'contestant' | 'creator'
+  });
+
+  const [userFormData, setUserFormData] = useState({
+    displayName: '',
+    email: '',
+    role: 'fan',
+    points: 0,
+    photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80',
+    isVerifiedCreator: false
+  });
+
+  const [courseFormData, setCourseFormData] = useState({
+    title: '',
+    description: '',
+    category: 'tech',
+    thumbnail: '',
+    videoUrl: '',
+    price: 0,
+    isSubscriptionOnly: false,
+    creatorUid: '',
+    creatorName: ''
   });
 
   useEffect(() => {
     const qContestants = query(collection(db, 'contestants'), orderBy('name', 'asc'));
     const unsubContestants = onSnapshot(qContestants, (snapshot) => {
       setContestants(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => handleFirestoreError(err, 'LIST', 'contestants'));
 
     const qUsers = query(collection(db, 'users'), orderBy('displayName', 'asc'));
     const unsubUsers = onSnapshot(qUsers, (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => handleFirestoreError(err, 'LIST', 'users'));
 
     const qApps = query(collection(db, 'contestantApplications'), orderBy('timestamp', 'desc'));
     const unsubApps = onSnapshot(qApps, (snapshot) => {
       setApplications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => handleFirestoreError(err, 'LIST', 'contestantApplications'));
 
     const qQuestions = query(collection(db, 'applicationQuestions'), orderBy('order', 'asc'));
     const unsubQuestions = onSnapshot(qQuestions, (snapshot) => {
       setQuestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => handleFirestoreError(err, 'LIST', 'applicationQuestions'));
 
     const unsubContent = onSnapshot(doc(db, 'siteSettings', 'content'), (doc) => {
       if (doc.exists()) {
@@ -143,7 +191,7 @@ export default function AdminDashboard() {
       }
       setIsContentLoading(false);
     }, (error) => {
-      console.error("Error fetching site content:", error);
+      handleFirestoreError(error, 'GET', 'siteSettings/content');
       setIsContentLoading(false);
     });
 
@@ -152,17 +200,27 @@ export default function AdminDashboard() {
         setMpesaSettings(doc.data() as any);
       }
       setLoading(false);
-    });
+    }, (err) => handleFirestoreError(err, 'GET', 'siteSettings/mpesa'));
 
     const qTransactions = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'));
     const unsubTransactions = onSnapshot(qTransactions, (snapshot) => {
       setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => handleFirestoreError(err, 'LIST', 'transactions'));
 
     const qVotes = query(collection(db, 'votes'), orderBy('timestamp', 'desc'));
     const unsubVotes = onSnapshot(qVotes, (snapshot) => {
       setVotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => handleFirestoreError(err, 'LIST', 'votes'));
+
+    const qCourses = query(collection(db, 'courses'), orderBy('createdAt', 'desc'));
+    const unsubCourses = onSnapshot(qCourses, (snapshot) => {
+      setCourses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => handleFirestoreError(err, 'LIST', 'courses'));
+
+    const qSubscriptions = query(collection(db, 'subscriptions'), orderBy('expiresAt', 'desc'));
+    const unsubSubscriptions = onSnapshot(qSubscriptions, (snapshot) => {
+      setSubscriptions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => handleFirestoreError(err, 'LIST', 'subscriptions'));
 
     return () => {
       unsubContestants();
@@ -173,6 +231,8 @@ export default function AdminDashboard() {
       unsubMpesa();
       unsubTransactions();
       unsubVotes();
+      unsubCourses();
+      unsubSubscriptions();
     };
   }, []);
 
@@ -209,6 +269,79 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Error updating verification:", err);
       toast.error("Failed to update verification status");
+    }
+  };
+
+  const handleUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const loadingToast = toast.loading(editingUserId ? "Updating user..." : "Adding user...");
+    try {
+      if (editingUserId) {
+        await updateDoc(doc(db, 'users', editingUserId), userFormData);
+        toast.success("User updated successfully", { id: loadingToast });
+      } else {
+        // For new users, we use a random ID since we can't create Auth accounts
+        const newUserId = Math.random().toString(36).substr(2, 9);
+        await setDoc(doc(db, 'users', newUserId), {
+          ...userFormData,
+          uid: newUserId,
+          createdAt: serverTimestamp()
+        });
+        toast.success("User profile created. They can sign up with this email.", { id: loadingToast });
+      }
+      setIsAddingUser(false);
+      setEditingUserId(null);
+      setUserFormData({
+        displayName: '',
+        email: '',
+        role: 'fan',
+        points: 0,
+        photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80',
+        isVerifiedCreator: false
+      });
+    } catch (err) {
+      console.error("Error saving user:", err);
+      toast.error("Failed to save user", { id: loadingToast });
+    }
+  };
+
+  const handleCourseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const loadingToast = toast.loading(editingCourseId ? "Updating course..." : "Adding course...");
+    try {
+      const data = {
+        ...courseFormData,
+        videoUrl: getYouTubeEmbedUrl(courseFormData.videoUrl),
+        status: 'approved', // Admin added courses are auto-approved
+        updatedAt: serverTimestamp()
+      };
+
+      if (editingCourseId) {
+        await updateDoc(doc(db, 'courses', editingCourseId), data);
+        toast.success("Course updated successfully", { id: loadingToast });
+      } else {
+        await addDoc(collection(db, 'courses'), {
+          ...data,
+          createdAt: serverTimestamp()
+        });
+        toast.success("Course added successfully", { id: loadingToast });
+      }
+      setIsAddingCourse(false);
+      setEditingCourseId(null);
+      setCourseFormData({
+        title: '',
+        description: '',
+        category: 'tech',
+        thumbnail: '',
+        videoUrl: '',
+        price: 0,
+        isSubscriptionOnly: false,
+        creatorUid: auth.currentUser?.uid || '',
+        creatorName: auth.currentUser?.displayName || 'Admin'
+      });
+    } catch (err) {
+      console.error("Error saving course:", err);
+      toast.error("Failed to save course", { id: loadingToast });
     }
   };
 
@@ -287,23 +420,29 @@ export default function AdminDashboard() {
       // 1. Update application status
       await updateDoc(doc(db, 'contestantApplications', app.id), { status: 'approved' });
       
-      // 2. Update user role
-      await updateDoc(doc(db, 'users', app.userUid), { role: 'contestant' });
+      // 2. Update user role and verification
+      const userUpdate: any = { role: app.role };
+      if (app.role === 'creator') {
+        userUpdate.isVerifiedCreator = true;
+      }
+      await updateDoc(doc(db, 'users', app.userUid), userUpdate);
 
-      // 3. Create contestant entry
-      await addDoc(collection(db, 'contestants'), {
-        name: app.fullName,
-        category: app.category,
-        bio: app.bio,
-        image: `https://ui-avatars.com/api/?name=${app.fullName}&background=random`,
-        votes: 0,
-        competitionId: 'general',
-        isVerified: true,
-        uid: app.userUid,
-        createdAt: new Date().toISOString()
-      });
+      // 3. Create contestant entry if it's a contestant
+      if (app.role === 'contestant') {
+        await addDoc(collection(db, 'contestants'), {
+          name: app.fullName,
+          category: app.category,
+          bio: app.bio,
+          image: `https://ui-avatars.com/api/?name=${app.fullName}&background=random`,
+          votes: 0,
+          competitionId: 'general',
+          isVerified: true,
+          uid: app.userUid,
+          createdAt: new Date().toISOString()
+        });
+      }
 
-      toast.success("Application approved and contestant created!", { id: loadingToast });
+      toast.success(`Application approved and user promoted to ${app.role}!`, { id: loadingToast });
     } catch (err) {
       console.error("Error approving application:", err);
       toast.error("Failed to approve application", { id: loadingToast });
@@ -329,7 +468,7 @@ export default function AdminDashboard() {
       };
       await addDoc(collection(db, 'applicationQuestions'), data);
       setIsAddingQuestion(false);
-      setQuestionFormData({ question: '', type: 'text', options: '', order: questions.length });
+      setQuestionFormData({ question: '', type: 'text', options: '', order: questions.length, targetRole: 'contestant' });
     } catch (err) {
       console.error("Error saving question:", err);
     }
@@ -557,6 +696,23 @@ export default function AdminDashboard() {
                   className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'votes' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
                 >
                   <Heart className="w-4 h-4 mr-2" /> Votes
+                </button>
+                <button 
+                  onClick={() => setActiveTab('courses')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'courses' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <Video className="w-4 h-4 mr-2" /> Video Library
+                  {courses.filter(c => c.status === 'pending').length > 0 && (
+                    <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                      {courses.filter(c => c.status === 'pending').length}
+                    </span>
+                  )}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('subscriptions')}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'subscriptions' ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-brand-black hover:bg-gray-50'}`}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" /> Subscriptions
                 </button>
               </div>
             </div>
@@ -916,6 +1072,17 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Target Role</label>
+                      <select 
+                        value={questionFormData.targetRole}
+                        onChange={(e) => setQuestionFormData({...questionFormData, targetRole: e.target.value as any})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none appearance-none"
+                      >
+                        <option value="contestant">Contestant</option>
+                        <option value="creator">Creator</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Display Order</label>
                       <input 
                         type="number" 
@@ -1213,6 +1380,33 @@ export default function AdminDashboard() {
                           value={contentFormData.socialTwitter}
                           onChange={(e) => setContentFormData({...contentFormData, socialTwitter: e.target.value})}
                           className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Subscription Settings */}
+                  <div className="p-8 bg-gray-50 rounded-[32px] border border-gray-100 space-y-6">
+                    <h4 className="font-bold text-gray-700">Subscription Settings</h4>
+                    <div className="grid md:grid-cols-2 gap-8">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Subscription Fee (KSh)</label>
+                        <input 
+                          type="number"
+                          required
+                          value={contentFormData.subscriptionFee}
+                          onChange={(e) => setContentFormData({...contentFormData, subscriptionFee: parseInt(e.target.value) || 0})}
+                          className="w-full px-6 py-4 rounded-2xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Duration (Days)</label>
+                        <input 
+                          type="number"
+                          required
+                          value={contentFormData.subscriptionDurationDays}
+                          onChange={(e) => setContentFormData({...contentFormData, subscriptionDurationDays: parseInt(e.target.value) || 0})}
+                          className="w-full px-6 py-4 rounded-2xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none"
                         />
                       </div>
                     </div>
@@ -1593,6 +1787,351 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+        ) : activeTab === 'courses' ? (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full md:w-auto">
+                <div className="bg-white px-8 py-4 rounded-3xl shadow-sm border border-gray-100">
+                  <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Courses</p>
+                  <p className="text-2xl font-bold">{courses.length}</p>
+                </div>
+                <div className="bg-white px-8 py-4 rounded-3xl shadow-sm border border-gray-100">
+                  <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Pending Moderation</p>
+                  <p className="text-2xl font-bold text-brand-orange">
+                    {courses.filter(c => c.status === 'pending').length}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsAddingCourse(true);
+                  setEditingCourseId(null);
+                  setCourseFormData({
+                    title: '',
+                    description: '',
+                    category: 'tech',
+                    thumbnail: '',
+                    videoUrl: '',
+                    price: 0,
+                    isSubscriptionOnly: false,
+                    creatorUid: auth.currentUser?.uid || '',
+                    creatorName: auth.currentUser?.displayName || 'Admin'
+                  });
+                }}
+                className="bg-brand-black text-white px-8 py-4 rounded-2xl font-bold flex items-center hover:bg-brand-orange transition-all shadow-lg shadow-brand-black/10"
+              >
+                <Plus className="w-5 h-5 mr-2" /> Add Course
+              </button>
+            </div>
+
+            {isAddingCourse && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-gray-100"
+              >
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold">{editingCourseId ? 'Edit Course' : 'Add New Course'}</h2>
+                  <button onClick={() => { setIsAddingCourse(false); setEditingCourseId(null); }} className="text-gray-400 hover:text-brand-black">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCourseSubmit} className="grid md:grid-cols-2 gap-12">
+                  <div className="space-y-8">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-3">Course Title</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={courseFormData.title}
+                        onChange={(e) => setCourseFormData({...courseFormData, title: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="e.g. Advanced Web Development"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-3">Category</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'science', name: 'Science' },
+                          { id: 'tech', name: 'Tech' },
+                          { id: 'medicine', name: 'Medicine' },
+                          { id: 'food', name: 'Food' },
+                          { id: 'fitness', name: 'Fitness' },
+                          { id: 'other', name: 'Other' },
+                        ].map(cat => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setCourseFormData({...courseFormData, category: cat.id})}
+                            className={`flex items-center justify-center px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                              courseFormData.category === cat.id 
+                                ? 'bg-brand-orange text-white' 
+                                : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                            }`}
+                          >
+                            <span>{cat.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-3">YouTube URL</label>
+                      <input 
+                        type="url" 
+                        required
+                        value={courseFormData.videoUrl}
+                        onChange={(e) => setCourseFormData({...courseFormData, videoUrl: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-8">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-3">Price (KSh)</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={courseFormData.price}
+                          onChange={(e) => setCourseFormData({...courseFormData, price: parseInt(e.target.value) || 0})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div className="flex items-center h-full pt-8">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            checked={courseFormData.isSubscriptionOnly}
+                            onChange={(e) => setCourseFormData({...courseFormData, isSubscriptionOnly: e.target.checked})}
+                            className="w-6 h-6 rounded-lg border-gray-300 text-brand-orange focus:ring-brand-orange"
+                          />
+                          <span className="text-sm font-bold text-gray-700">Subscription Only</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-8">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-3">Thumbnail Image</label>
+                      <ImageUpload 
+                        folder="courses"
+                        initialImage={courseFormData.thumbnail}
+                        onUploadComplete={(url) => setCourseFormData({...courseFormData, thumbnail: url})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-3">Course Description</label>
+                      <textarea 
+                        rows={6}
+                        required
+                        value={courseFormData.description}
+                        onChange={(e) => setCourseFormData({...courseFormData, description: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none resize-none"
+                        placeholder="Describe what students will learn..."
+                      />
+                    </div>
+                    <button 
+                      type="submit"
+                      className="w-full bg-brand-orange text-white py-5 rounded-2xl font-bold text-lg hover:shadow-xl transition-all flex items-center justify-center"
+                    >
+                      <Save className="w-5 h-5 mr-2" /> {editingCourseId ? 'Update Course' : 'Publish Course'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+
+            <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Course</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Creator</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Category</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Status</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {courses.map((c) => (
+                      <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-8 py-6">
+                          <div className="flex items-center space-x-4">
+                            <img src={c.thumbnail} alt={c.title} className="w-12 h-8 rounded-lg object-cover" />
+                            <div>
+                              <p className="font-bold">{c.title}</p>
+                              <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <p className="text-sm font-bold">{c.creatorName}</p>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            {c.category}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            c.status === 'approved' ? 'bg-green-100 text-green-600' :
+                            c.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                            'bg-yellow-100 text-yellow-600'
+                          }`}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <div className="flex justify-end space-x-2">
+                            {c.status === 'pending' && (
+                              <>
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      await updateDoc(doc(db, 'courses', c.id), { status: 'approved' });
+                                      toast.success("Course approved!");
+                                    } catch (err) {
+                                      toast.error("Failed to approve course");
+                                    }
+                                  }}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                                  title="Approve"
+                                >
+                                  <Check className="w-5 h-5" />
+                                </button>
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      await updateDoc(doc(db, 'courses', c.id), { status: 'rejected' });
+                                      toast.success("Course rejected");
+                                    } catch (err) {
+                                      toast.error("Failed to reject course");
+                                    }
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Reject"
+                                >
+                                  <Ban className="w-5 h-5" />
+                                </button>
+                              </>
+                            )}
+                            <button 
+                              onClick={() => {
+                                setEditingCourseId(c.id);
+                                setCourseFormData({
+                                  title: c.title || '',
+                                  description: c.description || '',
+                                  category: c.category || 'tech',
+                                  thumbnail: c.thumbnail || '',
+                                  videoUrl: c.videoUrl || '',
+                                  price: c.price || 0,
+                                  isSubscriptionOnly: c.isSubscriptionOnly || false,
+                                  creatorUid: c.creatorUid || '',
+                                  creatorName: c.creatorName || ''
+                                });
+                                setIsAddingCourse(true);
+                              }}
+                              className="p-2 text-gray-400 hover:text-brand-orange hover:bg-brand-orange/10 rounded-lg transition-all"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Delete Course',
+                                  message: 'Are you sure you want to delete this course? This action cannot be undone.',
+                                  onConfirm: async () => {
+                                    try {
+                                      await deleteDoc(doc(db, 'courses', c.id));
+                                      toast.success("Course deleted");
+                                    } catch (err) {
+                                      toast.error("Failed to delete course");
+                                    }
+                                  }
+                                });
+                              }}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {courses.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-12 text-center text-gray-500">
+                          No courses found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'subscriptions' ? (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Active Subscriptions</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {subscriptions.filter(s => new Date(s.expiresAt) > new Date()).length}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">User UID</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Plan</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Started At</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Expires At</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {subscriptions.map((s) => {
+                      const isActive = new Date(s.expiresAt) > new Date();
+                      return (
+                        <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-8 py-6 font-mono text-xs text-gray-400">{s.userId}</td>
+                          <td className="px-8 py-6 font-bold capitalize">{s.planId}</td>
+                          <td className="px-8 py-6 text-sm text-gray-500">
+                            {new Date(s.startedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-8 py-6 text-sm text-gray-500">
+                            {new Date(s.expiresAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                            }`}>
+                              {isActive ? 'Active' : 'Expired'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {subscriptions.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-8 py-12 text-center text-gray-500">
+                          No subscriptions found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         ) : activeTab === 'votes' ? (
           <div className="space-y-8">
             <div className="grid md:grid-cols-2 gap-6">
@@ -1653,61 +2192,229 @@ export default function AdminDashboard() {
             </div>
           </div>
         ) : activeTab === 'users' ? (
-          <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">User</th>
-                    <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Role</th>
-                    <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Verification</th>
-                    <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider text-center">Points</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-8 py-6">
-                        <div className="flex items-center space-x-4">
-                          <img src={u.photoURL} alt={u.displayName} className="w-10 h-10 rounded-full border border-gray-100" />
-                          <div>
-                            <p className="font-bold">{u.displayName}</p>
-                            <p className="text-xs text-gray-500">{u.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <select 
-                          value={u.role || 'fan'}
-                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className="bg-gray-50 border-none rounded-xl px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-brand-orange"
-                        >
-                          <option value="fan">Fan</option>
-                          <option value="contestant">Contestant</option>
-                          <option value="creator">Creator</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center space-x-3">
-                          <span className={`text-xs font-bold uppercase ${u.isVerifiedCreator ? 'text-green-600' : 'text-gray-400'}`}>
-                            {u.isVerifiedCreator ? 'Verified' : 'Unverified'}
-                          </span>
-                          <button 
-                            onClick={() => handleVerificationChange(u.id, !u.isVerifiedCreator)}
-                            className={`p-1.5 rounded-lg transition-all ${u.isVerifiedCreator ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}
-                          >
-                            <Shield className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6 text-center font-bold text-brand-orange">
-                        {u.points || 0}
-                      </td>
+          <div className="space-y-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input 
+                  type="text"
+                  placeholder="Search users by name or email..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white border border-gray-100 focus:ring-2 focus:ring-brand-orange outline-none shadow-sm"
+                />
+              </div>
+              <button 
+                onClick={() => {
+                  setIsAddingUser(true);
+                  setEditingUserId(null);
+                  setUserFormData({
+                    displayName: '',
+                    email: '',
+                    role: 'fan',
+                    points: 0,
+                    photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80',
+                    isVerifiedCreator: false
+                  });
+                }}
+                className="bg-brand-black text-white px-8 py-4 rounded-2xl font-bold flex items-center hover:bg-brand-orange transition-all shadow-lg shadow-brand-black/10"
+              >
+                <UserPlus className="w-5 h-5 mr-2" /> Add User
+              </button>
+            </div>
+
+            {isAddingUser && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-gray-100"
+              >
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold">{editingUserId ? 'Edit User' : 'Add New User'}</h2>
+                  <button onClick={() => { setIsAddingUser(false); setEditingUserId(null); }} className="text-gray-400 hover:text-brand-black">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleUserSubmit} className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Display Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={userFormData.displayName}
+                        onChange={(e) => setUserFormData({...userFormData, displayName: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="Full Name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={userFormData.email}
+                        onChange={(e) => setUserFormData({...userFormData, email: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Profile Photo URL</label>
+                      <input 
+                        type="url" 
+                        value={userFormData.photoURL}
+                        onChange={(e) => setUserFormData({...userFormData, photoURL: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Role</label>
+                      <select 
+                        required
+                        value={userFormData.role}
+                        onChange={(e) => setUserFormData({...userFormData, role: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none appearance-none"
+                      >
+                        <option value="fan">Fan</option>
+                        <option value="contestant">Contestant</option>
+                        <option value="creator">Creator</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Points</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={userFormData.points}
+                        onChange={(e) => setUserFormData({...userFormData, points: parseInt(e.target.value) || 0})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-3 pt-4">
+                      <input 
+                        type="checkbox"
+                        id="isVerifiedCreator"
+                        checked={userFormData.isVerifiedCreator}
+                        onChange={(e) => setUserFormData({...userFormData, isVerifiedCreator: e.target.checked})}
+                        className="w-6 h-6 rounded-lg border-gray-300 text-brand-orange focus:ring-brand-orange"
+                      />
+                      <label htmlFor="isVerifiedCreator" className="text-sm font-bold text-gray-700 cursor-pointer">Verified Creator</label>
+                    </div>
+                    <button 
+                      type="submit"
+                      className="w-full bg-brand-orange text-white py-4 rounded-2xl font-bold hover:shadow-lg transition-all flex items-center justify-center"
+                    >
+                      <Save className="w-5 h-5 mr-2" /> {editingUserId ? 'Update User' : 'Save User'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+
+            <div className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">User</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Role</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider">Verification</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider text-center">Points</th>
+                      <th className="px-8 py-6 font-bold text-sm uppercase tracking-wider text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {users.filter(u => 
+                      u.displayName?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      u.email?.toLowerCase().includes(userSearch.toLowerCase())
+                    ).map((u) => (
+                      <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-8 py-6">
+                          <div className="flex items-center space-x-4">
+                            <img src={u.photoURL} alt={u.displayName} className="w-10 h-10 rounded-full border border-gray-100 object-cover" />
+                            <div>
+                              <p className="font-bold">{u.displayName}</p>
+                              <p className="text-xs text-gray-500">{u.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            u.role === 'admin' ? 'bg-purple-100 text-purple-600' :
+                            u.role === 'creator' ? 'bg-blue-100 text-blue-600' :
+                            u.role === 'contestant' ? 'bg-orange-100 text-orange-600' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {u.role || 'fan'}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6">
+                          <div className="flex items-center space-x-3">
+                            <span className={`text-xs font-bold uppercase ${u.isVerifiedCreator ? 'text-green-600' : 'text-gray-400'}`}>
+                              {u.isVerifiedCreator ? 'Verified' : 'Unverified'}
+                            </span>
+                            <button 
+                              onClick={() => handleVerificationChange(u.id, !u.isVerifiedCreator)}
+                              className={`p-1.5 rounded-lg transition-all ${u.isVerifiedCreator ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}
+                            >
+                              <Shield className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6 text-center font-bold text-brand-orange">
+                          {u.points || 0}
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <div className="flex justify-end space-x-2">
+                            <button 
+                              onClick={() => {
+                                setEditingUserId(u.id);
+                                setUserFormData({
+                                  displayName: u.displayName || '',
+                                  email: u.email || '',
+                                  role: u.role || 'fan',
+                                  points: u.points || 0,
+                                  photoURL: u.photoURL || '',
+                                  isVerifiedCreator: u.isVerifiedCreator || false
+                                });
+                                setIsAddingUser(true);
+                              }}
+                              className="p-2 text-gray-400 hover:text-brand-orange hover:bg-brand-orange/10 rounded-lg transition-all"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Delete User',
+                                  message: `Are you sure you want to delete ${u.displayName}? This will remove their profile from the database.`,
+                                  onConfirm: async () => {
+                                    try {
+                                      await deleteDoc(doc(db, 'users', u.id));
+                                      toast.success("User deleted");
+                                    } catch (err) {
+                                      toast.error("Failed to delete user");
+                                    }
+                                  }
+                                });
+                              }}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ) : (

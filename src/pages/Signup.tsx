@@ -10,6 +10,7 @@ export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('fan');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -29,9 +30,14 @@ export default function Signup() {
     setError(null);
     const loadingToast = toast.loading("Creating your account...");
     try {
-      await signupWithEmail(email, password, name);
+      await signupWithEmail(email, password, name, role);
       toast.success("Account created! Welcome to Eliax.", { id: loadingToast });
-      navigate('/');
+      
+      if (role === 'fan') {
+        navigate('/');
+      } else {
+        navigate(`/apply?role=${role}`);
+      }
     } catch (err: any) {
       console.error("Signup error details:", err);
       let msg = err.message;
@@ -132,6 +138,22 @@ export default function Signup() {
                 className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
                 placeholder="••••••••"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Account Type</label>
+            <div className="relative">
+              <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <select 
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none appearance-none"
+              >
+                <option value="fan">Fan (Skip Questionnaire)</option>
+                <option value="contestant">Contestant (Requires Application)</option>
+                <option value="creator">Creator (Requires Application)</option>
+              </select>
             </div>
           </div>
 
