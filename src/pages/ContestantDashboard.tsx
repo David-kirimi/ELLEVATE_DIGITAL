@@ -525,7 +525,13 @@ export default function ContestantDashboard() {
                 >
                   <div className="aspect-video relative overflow-hidden bg-gray-100">
                     {post.mediaType === 'image' ? (
-                      <img src={post.mediaUrl} alt={post.title} className="w-full h-full object-cover" />
+                      post.mediaUrl ? (
+                        <img src={post.mediaUrl} alt={post.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-12 h-12 text-gray-300" />
+                        </div>
+                      )
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Video className="w-12 h-12 text-gray-300" />

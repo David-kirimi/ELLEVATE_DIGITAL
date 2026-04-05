@@ -111,7 +111,7 @@ export default function Account() {
             >
               <div className="relative inline-block mb-6">
                 <img 
-                  src={user.photoURL || ''} 
+                  src={user.photoURL && user.photoURL !== '' ? user.photoURL : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
                   alt={user.displayName || ''} 
                   className="w-32 h-32 rounded-full border-4 border-brand-orange/20 p-1"
                 />

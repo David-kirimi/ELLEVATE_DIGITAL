@@ -98,7 +98,7 @@ export default function Navbar() {
               <div className="flex items-center space-x-2">
                   <Link to="/account">
                     <img 
-                      src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
+                      src={user.photoURL && user.photoURL !== '' ? user.photoURL : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
                       alt={user.displayName || 'User'} 
                       className="w-8 h-8 rounded-full border border-gray-200 hover:border-brand-orange transition-all" 
                       referrerPolicy="no-referrer"
@@ -189,7 +189,7 @@ export default function Navbar() {
                 <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
                   <Link to="/account" onClick={() => setIsMenuOpen(false)} className="flex items-center space-x-3">
                     <img 
-                      src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
+                      src={user.photoURL && user.photoURL !== '' ? user.photoURL : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
                       alt={user.displayName || 'User'} 
                       className="w-10 h-10 rounded-full" 
                       referrerPolicy="no-referrer"

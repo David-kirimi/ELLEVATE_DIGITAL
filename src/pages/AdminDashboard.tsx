@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Edit2, Trash2, Save, X, Shield, Users, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle, Music, Music2, ShoppingCart, Heart, Video, CheckCircle, UserPlus, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Shield, Users, User, Trophy, FileText, Check, Ban, HelpCircle, Layout, Image as ImageIcon, Terminal, Info, AlertCircle, Music, Music2, ShoppingCart, Heart, Video, CheckCircle, UserPlus, Search } from 'lucide-react';
 import { db, auth } from '../firebase';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageUpload from '../components/ImageUpload';
@@ -719,6 +719,18 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {!import.meta.env.VITE_IMGBB_API_KEY && (
+          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-[32px] flex items-start">
+            <AlertCircle className="w-6 h-6 text-red-500 mr-4 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-lg font-bold text-red-600 mb-1">ImgBB API Key Missing</h3>
+              <p className="text-sm text-red-500/80 leading-relaxed">
+                Image uploads will not work until the administrator adds the <strong>VITE_IMGBB_API_KEY</strong> environment variable.
+              </p>
+            </div>
+          </div>
+        )}
+
       {activeTab === 'contestants' ? (
           <>
             {!isAdding && (
@@ -958,7 +970,13 @@ export default function AdminDashboard() {
                         <td className="px-8 py-6">
                           <div className="flex items-center space-x-4">
                             <div className="relative">
-                              <img src={c.image} alt={c.name} className="w-12 h-12 rounded-full object-cover" />
+                              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                                {c.image ? (
+                                  <img src={c.image} alt={c.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="w-6 h-6 text-gray-300" />
+                                )}
+                              </div>
                               {c.isVerified && (
                                 <div className="absolute -top-1 -right-1 bg-blue-500 text-white p-0.5 rounded-full border-2 border-white">
                                   <Check className="w-2 h-2" />
@@ -1587,7 +1605,13 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-8 py-6">
                             <div className="flex items-center space-x-3">
-                              <img src={artist.image} alt={artist.name} className="w-8 h-8 rounded-full object-cover" />
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                                {artist.image ? (
+                                  <img src={artist.image} alt={artist.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="w-4 h-4 text-gray-300" />
+                                )}
+                              </div>
                               <span className="font-bold text-sm">{artist.name}</span>
                             </div>
                           </td>
@@ -1960,7 +1984,13 @@ export default function AdminDashboard() {
                       <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-8 py-6">
                           <div className="flex items-center space-x-4">
-                            <img src={c.thumbnail} alt={c.title} className="w-12 h-8 rounded-lg object-cover" />
+                            <div className="w-12 h-8 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
+                              {c.thumbnail ? (
+                                <img src={c.thumbnail} alt={c.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <Video className="w-5 h-5 text-gray-300" />
+                              )}
+                            </div>
                             <div>
                               <p className="font-bold">{c.title}</p>
                               <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>
@@ -2168,7 +2198,13 @@ export default function AdminDashboard() {
                           <td className="px-8 py-6 text-xs font-mono text-gray-500">{v.fanUid}</td>
                           <td className="px-8 py-6">
                             <div className="flex items-center space-x-3">
-                              {contestant?.image && <img src={contestant.image} className="w-8 h-8 rounded-full object-cover" />}
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                                {contestant?.image ? (
+                                  <img src={contestant.image} className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="w-4 h-4 text-gray-300" />
+                                )}
+                              </div>
                               <span className="font-bold">{contestant?.name || 'Unknown'}</span>
                             </div>
                           </td>
@@ -2336,7 +2372,13 @@ export default function AdminDashboard() {
                       <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-8 py-6">
                           <div className="flex items-center space-x-4">
-                            <img src={u.photoURL} alt={u.displayName} className="w-10 h-10 rounded-full border border-gray-100 object-cover" />
+                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-100">
+                              {u.photoURL ? (
+                                <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
+                              ) : (
+                                <User className="w-5 h-5 text-gray-300" />
+                              )}
+                            </div>
                             <div>
                               <p className="font-bold">{u.displayName}</p>
                               <p className="text-xs text-gray-500">{u.email}</p>

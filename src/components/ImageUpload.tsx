@@ -11,7 +11,7 @@ interface ImageUploadProps {
 export default function ImageUpload({ onUploadComplete, initialImage, folder = 'general' }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [preview, setPreview] = useState<string | null>(initialImage || null);
+  const [preview, setPreview] = useState<string | null>(initialImage && initialImage !== '' ? initialImage : null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +55,11 @@ export default function ImageUpload({ onUploadComplete, initialImage, folder = '
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to upload image to ImgBB');
+        const errorMessage = errorData.error?.message || 'Failed to upload image to ImgBB';
+        if (errorMessage.includes('Invalid API v1 key')) {
+          throw new Error('The ImgBB API Key provided is invalid. Please check your VITE_IMGBB_API_KEY in the Settings menu.');
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

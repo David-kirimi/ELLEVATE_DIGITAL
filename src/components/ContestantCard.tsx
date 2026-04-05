@@ -118,7 +118,7 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
         onClick={() => setShowDetail(true)}
       >
         <img 
-          src={contestant.image} 
+          src={contestant.image && contestant.image !== '' ? contestant.image : `https://ui-avatars.com/api/?name=${encodeURIComponent(contestant.name)}&background=random&size=512`} 
           alt={contestant.name} 
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           referrerPolicy="no-referrer"
@@ -235,7 +235,7 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
 
             <div className="md:w-1/2 relative bg-gray-100">
               <img 
-                src={contestant.image} 
+                src={contestant.image && contestant.image !== '' ? contestant.image : `https://ui-avatars.com/api/?name=${encodeURIComponent(contestant.name)}&background=random&size=512`} 
                 alt={contestant.name} 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"

@@ -307,12 +307,18 @@ export default function CreatorDashboard() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100 group"
               >
-                <div className="relative aspect-video">
-                  <img 
-                    src={course.thumbnail} 
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="relative aspect-video bg-gray-100">
+                  {course.thumbnail ? (
+                    <img 
+                      src={course.thumbnail} 
+                      alt={course.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Video className="w-12 h-12 text-gray-200" />
+                    </div>
+                  )}
                   <div className="absolute top-4 right-4 flex space-x-2">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                       course.status === 'approved' ? 'bg-green-500 text-white' :
