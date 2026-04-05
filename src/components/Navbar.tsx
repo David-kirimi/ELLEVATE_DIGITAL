@@ -10,6 +10,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, isAdmin, userProfile } = useAuth();
+  const [siteContent, setSiteContent] = useState<any>(null);
   const location = useLocation();
 
   const userPoints = userProfile?.points || 0;
@@ -18,14 +19,23 @@ export default function Navbar() {
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    const unsubContent = onSnapshot(doc(db, 'siteSettings', 'content'), (doc) => {
+      if (doc.exists()) {
+        setSiteContent(doc.data());
+      }
+    });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      unsubContent();
+    };
   }, []);
 
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Contestants', href: '/contestants' },
     { name: 'Courses', href: '/courses' },
-    { name: 'Kalenjin Awards', href: '/kalenjin-awards' },
     { name: 'Buy Points', href: '/points' },
   ];
 
@@ -33,8 +43,8 @@ export default function Navbar() {
     <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled || location.pathname !== '/' ? 'bg-white/90 backdrop-blur-md py-4 shadow-sm' : 'bg-transparent py-6'}`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <Link to="/" className="text-2xl font-bold flex items-center">
-          <span className="text-brand-black">ELIAX</span>
-          <span className="text-orange-600 ml-1">DIGITAL</span>
+          <span className={scrolled || location.pathname !== '/' ? 'text-brand-black' : 'text-white'}>{siteContent?.logoText || 'ELIAX'}</span>
+          <span className="text-brand-orange ml-1">{siteContent?.logoSubtext || 'DIGITAL'}</span>
         </Link>
 
         {/* Desktop Nav */}
@@ -43,7 +53,11 @@ export default function Navbar() {
             <Link 
               key={link.name} 
               to={link.href} 
-              className={`text-sm font-medium transition-colors ${location.pathname === link.href ? 'text-orange-600' : 'text-gray-600 hover:text-orange-600'}`}
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === link.href 
+                  ? 'text-brand-orange' 
+                  : (scrolled || location.pathname !== '/' ? 'text-gray-600 hover:text-brand-orange' : 'text-white/80 hover:text-white')
+              }`}
             >
               {link.name}
             </Link>
@@ -52,7 +66,11 @@ export default function Navbar() {
           {user && isAdmin && (
             <Link 
               to="/admin" 
-              className={`text-sm font-bold px-4 py-2 rounded-full transition-all ${location.pathname === '/admin' ? 'bg-orange-600 text-white' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
+              className={`text-sm font-bold px-4 py-2 rounded-full transition-all ${
+                location.pathname === '/admin' 
+                  ? 'bg-brand-orange text-white' 
+                  : (scrolled || location.pathname !== '/' ? 'bg-orange-50 text-brand-orange hover:bg-orange-100' : 'bg-white/10 text-white hover:bg-white/20')
+              }`}
             >
               Admin
             </Link>
@@ -61,7 +79,11 @@ export default function Navbar() {
           {user && isCreator && (
             <Link 
               to="/creator" 
-              className={`text-sm font-medium transition-colors ${location.pathname === '/creator' ? 'text-orange-600' : 'text-gray-600 hover:text-orange-600'}`}
+              className={`text-sm font-medium transition-colors ${
+                location.pathname === '/creator' 
+                  ? 'text-brand-orange' 
+                  : (scrolled || location.pathname !== '/' ? 'text-gray-600 hover:text-brand-orange' : 'text-white/80 hover:text-white')
+              }`}
             >
               Creator Dashboard
             </Link>
@@ -86,17 +108,30 @@ export default function Navbar() {
                       }}
                     />
                   </Link>
-                <button onClick={logout} className="text-gray-600 hover:text-red-600 transition-colors">
+                <button 
+                  onClick={logout} 
+                  className={`transition-colors ${scrolled || location.pathname !== '/' ? 'text-gray-600 hover:text-red-600' : 'text-white/80 hover:text-red-400'}`}
+                >
                   <LogOut className="w-5 h-5" />
                 </button>
               </div>
             </div>
           ) : (
             <div className="flex items-center space-x-4">
-              <Link to="/login" className="text-sm font-bold text-gray-600 hover:text-brand-orange transition-colors">
+              <Link 
+                to="/login" 
+                className={`text-sm font-bold transition-colors ${scrolled || location.pathname !== '/' ? 'text-gray-600 hover:text-brand-orange' : 'text-white/80 hover:text-white'}`}
+              >
                 Login
               </Link>
-              <Link to="/signup" className="bg-brand-black text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-orange-600 transition-all">
+              <Link 
+                to="/signup" 
+                className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
+                  scrolled || location.pathname !== '/' 
+                    ? 'bg-brand-black text-white hover:bg-brand-orange' 
+                    : 'bg-white text-brand-black hover:bg-brand-orange hover:text-white'
+                }`}
+              >
                 Sign Up
               </Link>
             </div>
@@ -105,7 +140,7 @@ export default function Navbar() {
 
         {/* Mobile Menu Toggle */}
         <button 
-          className="md:hidden text-brand-black"
+          className={`md:hidden ${scrolled || location.pathname !== '/' ? 'text-brand-black' : 'text-white'}`}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           {isMenuOpen ? <X /> : <Menu />}

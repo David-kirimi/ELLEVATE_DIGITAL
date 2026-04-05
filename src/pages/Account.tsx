@@ -25,7 +25,6 @@ export default function Account() {
       // Fetch rank
       const q = query(
         collection(db, 'contestants'),
-        where('competitionId', '==', 'kalenjin-crown-2026'),
         orderBy('votes', 'desc')
       );
       getDocs(q).then(snapshot => {
@@ -232,9 +231,9 @@ export default function Account() {
               >
                 <div className="relative z-10">
                   <h2 className="text-3xl font-bold mb-4">Fan Dashboard</h2>
-                  <p className="text-gray-400 mb-8 max-w-md">Support your favorite artists and help them win! Your votes make a difference in the Kalenjin Crown Awards.</p>
+                  <p className="text-gray-400 mb-8 max-w-md">Support your favorite artists and help them win! Your votes make a difference in the competition.</p>
                   <Link 
-                    to="/kalenjin-awards"
+                    to="/contestants"
                     className="inline-flex items-center px-8 py-4 bg-brand-orange text-white rounded-2xl font-bold hover:shadow-lg transition-all"
                   >
                     <Heart className="w-5 h-5 mr-2" />

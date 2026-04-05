@@ -83,13 +83,28 @@ export default function AdminDashboard() {
 
   const [contentFormData, setContentFormData] = useState({
     heroTitle: 'VOTE FOR YOUR FAVORITE TALENT',
-    heroSubtitle: 'Empowering the next generation of Kalenjin stars through community-driven recognition and support.',
+    heroSubtitle: 'Empowering the next generation of stars through community-driven recognition and support.',
     heroImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80',
     aboutTitle: 'CELEBRATING EXCELLENCE',
-    aboutText: 'The Kalenjin Crown Awards is a premier platform dedicated to discovering, nurturing, and celebrating the diverse talents within the Kalenjin community. From music and arts to modeling and innovation, we provide a stage for excellence to shine.',
+    aboutText: 'Our platform is dedicated to discovering, nurturing, and celebrating the diverse talents within the community. From music and arts to modeling and innovation, we provide a stage for excellence to shine.',
     contactEmail: 'support@eliax.com',
     contactPhone: '+254 700 000 000',
-    footerText: '© 2026 Eliax. All rights reserved. Built for the community.'
+    footerText: '© 2026 Eliax. All rights reserved. Built for the community.',
+    logoText: 'ELIAX',
+    logoSubtext: 'DIGITAL',
+    eventName: 'Excellence Awards 2026',
+    heroButtonText: 'Vote Now',
+    missionLabel: 'Our Mission',
+    statsYear: '2026',
+    statsCategories: '12+',
+    contactAddress: 'Nairobi, Kenya',
+    socialInstagram: '#',
+    socialFacebook: '#',
+    socialTwitter: '#',
+    whatsappNumber: '254794415006',
+    pointsHelpTitle: 'Need help with payments?',
+    pointsHelpText: 'We support M-Pesa, Card, and Bank transfers. If you encounter any issues with your purchase, our support team is available 24/7.',
+    pointsHelpButtonText: 'Contact Support'
   });
 
   const [questionFormData, setQuestionFormData] = useState({
@@ -547,7 +562,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-      </div>
 
       {activeTab === 'contestants' ? (
           <>
@@ -608,7 +622,6 @@ export default function AdminDashboard() {
                         className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none appearance-none"
                       >
                         <option value="general">General Competition</option>
-                        <option value="kalenjin-crown-2026">Kalenjin Crown Awards 2026</option>
                       </select>
                     </div>
                     <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-2xl">
@@ -681,7 +694,7 @@ export default function AdminDashboard() {
 
                     {formData.category === 'musician' && (
                       <div className="space-y-4">
-                        <label className="block text-sm font-bold text-gray-700">Nominated Songs (KALENJIN BEST HIT SONG)</label>
+                        <label className="block text-sm font-bold text-gray-700">Nominated Songs</label>
                         {formData.songs.map((song, idx) => (
                           <div key={song.id} className="p-4 bg-gray-50 rounded-2xl space-y-3">
                             <div className="flex gap-2">
@@ -808,12 +821,8 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-8 py-6">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            c.competitionId === 'kalenjin-crown-2026' 
-                              ? 'bg-brand-orange/10 text-brand-orange' 
-                              : 'bg-blue-50 text-blue-600'
-                          }`}>
-                            {c.competitionId === 'kalenjin-crown-2026' ? 'Kalenjin Crown' : 'General'}
+                          <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold capitalize">
+                            {c.competitionId === 'general' ? 'General' : c.competitionId}
                           </span>
                         </td>
                         <td className="px-8 py-6 text-center font-bold">
@@ -972,6 +981,37 @@ export default function AdminDashboard() {
               <h2 className="text-2xl font-bold mb-8">Manage Site Content</h2>
               
               <form onSubmit={handleContentSubmit} className="space-y-12">
+                {/* Header & Logo Section */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-bold text-brand-orange flex items-center">
+                    <Shield className="w-5 h-5 mr-2" /> Header & Logo
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Logo Main Text</label>
+                      <input 
+                        type="text"
+                        required
+                        value={contentFormData.logoText}
+                        onChange={(e) => setContentFormData({...contentFormData, logoText: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="e.g. ELIAX"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Logo Subtext</label>
+                      <input 
+                        type="text"
+                        required
+                        value={contentFormData.logoSubtext}
+                        onChange={(e) => setContentFormData({...contentFormData, logoSubtext: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        placeholder="e.g. DIGITAL"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Hero Section */}
                 <div className="space-y-6">
                   <h3 className="text-lg font-bold text-brand-orange flex items-center">
@@ -980,12 +1020,33 @@ export default function AdminDashboard() {
                   <div className="grid md:grid-cols-2 gap-8">
                     <div className="space-y-6">
                       <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Event Name (Badge)</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.eventName}
+                          onChange={(e) => setContentFormData({...contentFormData, eventName: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                          placeholder="e.g. Excellence Awards 2026"
+                        />
+                      </div>
+                      <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Hero Title</label>
                         <input 
                           type="text"
                           required
                           value={contentFormData.heroTitle}
                           onChange={(e) => setContentFormData({...contentFormData, heroTitle: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Hero Button Text</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.heroButtonText}
+                          onChange={(e) => setContentFormData({...contentFormData, heroButtonText: e.target.value})}
                           className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
                         />
                       </div>
@@ -1016,27 +1077,61 @@ export default function AdminDashboard() {
                   <h3 className="text-lg font-bold text-brand-orange flex items-center">
                     <ImageIcon className="w-5 h-5 mr-2" /> About Section
                   </h3>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">About Title</label>
-                      <input 
-                        type="text"
-                        required
-                        value={contentFormData.aboutTitle}
-                        onChange={(e) => setContentFormData({...contentFormData, aboutTitle: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
-                      />
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Mission Label</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.missionLabel}
+                          onChange={(e) => setContentFormData({...contentFormData, missionLabel: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">About Title</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.aboutTitle}
+                          onChange={(e) => setContentFormData({...contentFormData, aboutTitle: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">About Text</label>
-                      <textarea 
-                        rows={4}
-                        required
-                        value={contentFormData.aboutText}
-                        onChange={(e) => setContentFormData({...contentFormData, aboutText: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none resize-none"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Stat: Year</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.statsYear}
+                          onChange={(e) => setContentFormData({...contentFormData, statsYear: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Stat: Categories</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.statsCategories}
+                          onChange={(e) => setContentFormData({...contentFormData, statsCategories: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">About Text</label>
+                    <textarea 
+                      rows={4}
+                      required
+                      value={contentFormData.aboutText}
+                      onChange={(e) => setContentFormData({...contentFormData, aboutText: e.target.value})}
+                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none resize-none"
+                    />
                   </div>
                 </div>
 
@@ -1045,37 +1140,130 @@ export default function AdminDashboard() {
                   <h3 className="text-lg font-bold text-brand-orange flex items-center">
                     <Users className="w-5 h-5 mr-2" /> Contact & Footer
                   </h3>
-                  <div className="grid md:grid-cols-3 gap-8">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Contact Email</label>
-                      <input 
-                        type="email"
-                        required
-                        value={contentFormData.contactEmail}
-                        onChange={(e) => setContentFormData({...contentFormData, contactEmail: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
-                      />
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Contact Email</label>
+                        <input 
+                          type="email"
+                          required
+                          value={contentFormData.contactEmail}
+                          onChange={(e) => setContentFormData({...contentFormData, contactEmail: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Contact Phone</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.contactPhone}
+                          onChange={(e) => setContentFormData({...contentFormData, contactPhone: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Contact Address</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.contactAddress}
+                          onChange={(e) => setContentFormData({...contentFormData, contactAddress: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">WhatsApp Number (International Format)</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.whatsappNumber}
+                          onChange={(e) => setContentFormData({...contentFormData, whatsappNumber: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                          placeholder="e.g. 254794415006"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Instagram URL</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.socialInstagram}
+                          onChange={(e) => setContentFormData({...contentFormData, socialInstagram: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Facebook URL</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.socialFacebook}
+                          onChange={(e) => setContentFormData({...contentFormData, socialFacebook: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Twitter URL</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.socialTwitter}
+                          onChange={(e) => setContentFormData({...contentFormData, socialTwitter: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Points Page Help Section */}
+                  <div className="p-8 bg-gray-50 rounded-[32px] border border-gray-100 space-y-6">
+                    <h4 className="font-bold text-gray-700">Points Page Help Section</h4>
+                    <div className="grid md:grid-cols-2 gap-8">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Help Title</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.pointsHelpTitle}
+                          onChange={(e) => setContentFormData({...contentFormData, pointsHelpTitle: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Help Button Text</label>
+                        <input 
+                          type="text"
+                          required
+                          value={contentFormData.pointsHelpButtonText}
+                          onChange={(e) => setContentFormData({...contentFormData, pointsHelpButtonText: e.target.value})}
+                          className="w-full px-6 py-4 rounded-2xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        />
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Contact Phone</label>
-                      <input 
-                        type="text"
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Help Text</label>
+                      <textarea 
+                        rows={2}
                         required
-                        value={contentFormData.contactPhone}
-                        onChange={(e) => setContentFormData({...contentFormData, contactPhone: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                        value={contentFormData.pointsHelpText}
+                        onChange={(e) => setContentFormData({...contentFormData, pointsHelpText: e.target.value})}
+                        className="w-full px-6 py-4 rounded-2xl bg-white border-none focus:ring-2 focus:ring-brand-orange outline-none resize-none"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Footer Text</label>
-                      <input 
-                        type="text"
-                        required
-                        value={contentFormData.footerText}
-                        onChange={(e) => setContentFormData({...contentFormData, footerText: e.target.value})}
-                        className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
-                      />
-                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Footer Copyright Text</label>
+                    <input 
+                      type="text"
+                      required
+                      value={contentFormData.footerText}
+                      onChange={(e) => setContentFormData({...contentFormData, footerText: e.target.value})}
+                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-brand-orange outline-none"
+                    />
                   </div>
                 </div>
                 <div className="flex justify-end">
@@ -1236,7 +1424,6 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-
         ) : activeTab === 'mpesa' ? (
           <div className="space-y-8">
             <motion.div 
@@ -1614,3 +1801,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

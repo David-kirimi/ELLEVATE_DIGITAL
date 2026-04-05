@@ -24,7 +24,6 @@ import Courses from './pages/Courses';
 import CourseDetail from './pages/CourseDetail';
 import CreatorDashboard from './pages/CreatorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import KalenjinAwards from './pages/KalenjinAwards';
 import Account from './pages/Account';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -74,7 +73,7 @@ export default function App() {
       
       {/* Floating WhatsApp Button */}
       <a 
-        href={`https://wa.me/${siteContent?.contactPhone?.replace(/\D/g, '') || '254794415006'}`}
+        href={`https://wa.me/${siteContent?.whatsappNumber?.replace(/\D/g, '') || '254794415006'}`}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center justify-center group"
@@ -100,7 +99,6 @@ export default function App() {
               isAdmin ? <AdminDashboard /> : <Navigate to="/login" replace />
             } 
           />
-          <Route path="/kalenjin-awards" element={<KalenjinAwards />} />
           <Route path="/account" element={<Account />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -122,7 +120,7 @@ export default function App() {
           <div className="grid md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-2">
               <a href="/" className="text-3xl font-display font-bold mb-6 block">
-                ELIAX<span className="text-brand-orange">DIGITAL</span>
+                {siteContent?.logoText || 'ELIAX'}<span className="text-brand-orange">{siteContent?.logoSubtext || 'DIGITAL'}</span>
               </a>
               <p className="text-gray-400 max-w-sm mb-4">
                 {siteContent?.footerText || "Kenya's leading digital marketing agency and competition platform. We bring customers to your brand and stars to the spotlight."}
@@ -131,9 +129,9 @@ export default function App() {
                 <Phone className="w-4 h-4 mr-2" /> {siteContent?.contactPhone || '+254 794 415006'}
               </div>
               <div className="flex space-x-4">
-                <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-orange transition-all"><Instagram size={20} /></a>
-                <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-orange transition-all"><Facebook size={20} /></a>
-                <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-orange transition-all"><Twitter size={20} /></a>
+                <a href={siteContent?.socialInstagram || "#"} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-orange transition-all"><Instagram size={20} /></a>
+                <a href={siteContent?.socialFacebook || "#"} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-orange transition-all"><Facebook size={20} /></a>
+                <a href={siteContent?.socialTwitter || "#"} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-brand-orange transition-all"><Twitter size={20} /></a>
               </div>
             </div>
             <div>
@@ -166,7 +164,7 @@ export default function App() {
               <ul className="space-y-4 text-gray-400">
                 <li className="flex items-center"><Phone className="w-4 h-4 mr-2" /> {siteContent?.contactPhone || '+254 794 415006'}</li>
                 <li className="flex items-center"><Mail className="w-4 h-4 mr-2" /> {siteContent?.contactEmail || 'marketing@eliaxdigitalmarketing.com'}</li>
-                <li className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> Nairobi, Kenya</li>
+                <li className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> {siteContent?.contactAddress || 'Nairobi, Kenya'}</li>
               </ul>
             </div>
           </div>

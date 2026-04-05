@@ -2,10 +2,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-orange: #FFCC00;
-  --color-brand-black: #0A140A;
-  --color-brand-green: #0A140A;
-  --color-brand-gold: #FFCC00;
+  --color-brand-orange: #FF6600;
+  --color-brand-black: #000000;
+  --color-brand-green: #000000;
+  --color-brand-gold: #FF6600;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", serif;
   --font-display: "Playfair Display", serif;
@@ -13,9 +13,9 @@
 
 @layer base {
   body {
-    @apply bg-brand-green text-white antialiased font-sans;
+    @apply bg-white text-gray-900 antialiased font-sans;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif font-bold tracking-tight text-brand-gold;
+    @apply font-serif font-bold tracking-tight text-brand-orange;
   }
 }

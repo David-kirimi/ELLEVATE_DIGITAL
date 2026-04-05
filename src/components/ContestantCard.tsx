@@ -199,7 +199,7 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
             </>
           ) : (
             <>
-              <Heart className="w-5 h-5 mr-2" /> Vote (1 pt)
+              <Heart className="w-5 h-5 mr-2" /> Vote (1 pt / 10 KSh)
             </>
           )}
         </button>
@@ -372,7 +372,7 @@ export default function ContestantCard({ contestant }: ContestantCardProps) {
                   </>
                 ) : (
                   <>
-                    <Heart className="w-6 h-6 mr-2" /> Vote (1 Point)
+                    <Heart className="w-6 h-6 mr-2" /> Vote (1 Point / 10 KSh)
                   </>
                 )}
               </button>

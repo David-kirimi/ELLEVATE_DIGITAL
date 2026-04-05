@@ -8,9 +8,9 @@ import toast from 'react-hot-toast';
 
 const POINT_PACKS = [
   { id: 'pack1', points: 50, price: 500, popular: false },
-  { id: 'pack2', points: 150, price: 1200, popular: true },
-  { id: 'pack3', points: 500, price: 3500, popular: false },
-  { id: 'pack4', points: 1200, price: 7500, popular: false },
+  { id: 'pack2', points: 100, price: 1000, popular: true },
+  { id: 'pack3', points: 500, price: 5000, popular: false },
+  { id: 'pack4', points: 1000, price: 10000, popular: false },
 ];
 
 export default function Points() {
@@ -19,14 +19,25 @@ export default function Points() {
   const [error, setError] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [mpesaKeys, setMpesaKeys] = useState<any>(null);
+  const [siteContent, setSiteContent] = useState<any>(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'siteSettings', 'mpesa'), (doc) => {
+    const unsubMpesa = onSnapshot(doc(db, 'siteSettings', 'mpesa'), (doc) => {
       if (doc.exists()) {
         setMpesaKeys(doc.data());
       }
     });
-    return () => unsub();
+
+    const unsubContent = onSnapshot(doc(db, 'siteSettings', 'content'), (doc) => {
+      if (doc.exists()) {
+        setSiteContent(doc.data());
+      }
+    });
+
+    return () => {
+      unsubMpesa();
+      unsubContent();
+    };
   }, []);
 
   const handleBuy = async (pack: typeof POINT_PACKS[0]) => {
@@ -121,7 +132,8 @@ export default function Points() {
           <h1 className="text-4xl md:text-5xl mb-4">Purchase Points</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
             Get points to vote for your favorite contestants and help them win! 
-            1 point = 1 vote.
+            <br />
+            <span className="font-bold text-brand-orange">1 Point = 10 KSh</span> • 1 Point = 1 Vote
           </p>
         </div>
 
@@ -218,16 +230,16 @@ export default function Points() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32" />
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="max-w-xl">
-              <h2 className="text-3xl md:text-4xl mb-4">Need help with payments?</h2>
+              <h2 className="text-3xl md:text-4xl mb-4">{siteContent?.pointsHelpTitle || 'Need help with payments?'}</h2>
               <p className="text-gray-400">
-                We support M-Pesa, Card, and Bank transfers. If you encounter any issues with your purchase, our support team is available 24/7.
+                {siteContent?.pointsHelpText || 'We support M-Pesa, Card, and Bank transfers. If you encounter any issues with your purchase, our support team is available 24/7.'}
               </p>
             </div>
             <a 
-              href="https://wa.me/254700000000" 
+              href={`https://wa.me/${siteContent?.whatsappNumber?.replace(/\D/g, '') || '254794415006'}`} 
               className="bg-white text-brand-black px-8 py-4 rounded-full font-bold flex items-center hover:bg-brand-orange hover:text-white transition-all"
             >
-              Contact Support <ArrowRight className="ml-2 w-5 h-5" />
+              {siteContent?.pointsHelpButtonText || 'Contact Support'} <ArrowRight className="ml-2 w-5 h-5" />
             </a>
           </div>
         </div>
